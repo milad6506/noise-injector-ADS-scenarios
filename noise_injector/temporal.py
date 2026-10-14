@@ -52,8 +52,8 @@ def activation_mask(
     raise ValueError(f"unhandled pattern: {pattern}")
 
 
-def derive_seed(master_seed: int, *parts: str) -> int:
+def derive_seed(master_seed: int, *parts) -> int:
     import hashlib
 
-    h = hashlib.sha256(f"{master_seed}:{':'.join(parts)}".encode()).digest()
+    h = hashlib.sha256(f"{master_seed}:{':'.join(str(p) for p in parts)}".encode()).digest()
     return int.from_bytes(h[:8], "little")

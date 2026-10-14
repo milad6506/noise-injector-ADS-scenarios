@@ -1,0 +1,668 @@
+{
+ "results": [
+  {
+   "round": 0,
+   "family": null,
+   "severity": null,
+   "target": "device-vlm-driving",
+   "role": "driving",
+   "score": 7.5,
+   "metrics": {
+    "score": 7.5,
+    "frames": 2,
+    "judged": {
+     "plan_safety": 9,
+     "gt_alignment": 6,
+     "hallucinations": [
+      "unknown",
+      "unknown"
+     ],
+     "over_conservative": false
+    }
+   },
+   "eval_s": 9.2,
+   "error": null
+  },
+  {
+   "round": 0,
+   "family": null,
+   "severity": null,
+   "target": "device-vlm-perception",
+   "role": "perception",
+   "score": 0.67,
+   "metrics": {
+    "presence_recall": 0.667,
+    "presence_fp_rate": 1.0,
+    "class_accuracy": 0.333,
+    "frames": 3,
+    "parse_failures": 3,
+    "parse_modes": {
+     "keyword-fallback": 3
+    },
+    "score": 0.67
+   },
+   "eval_s": 3.6,
+   "error": null
+  },
+  {
+   "round": 1,
+   "family": "glare",
+   "severity": 4,
+   "target": "device-vlm-driving",
+   "role": "driving",
+   "score": 7.0,
+   "metrics": {
+    "score": 7.0,
+    "frames": 2,
+    "judged": {
+     "plan_safety": 8,
+     "gt_alignment": 6,
+     "hallucinations": [
+      "The ego vehicle is driving fast",
+      "The ego vehicle is going straight"
+     ],
+     "over_conservative": false
+    }
+   },
+   "eval_s": 9.5,
+   "error": null
+  },
+  {
+   "round": 1,
+   "family": "glare",
+   "severity": 4,
+   "target": "device-vlm-perception",
+   "role": "perception",
+   "score": 0.67,
+   "metrics": {
+    "presence_recall": 0.667,
+    "presence_fp_rate": 1.0,
+    "class_accuracy": 0.333,
+    "frames": 3,
+    "parse_failures": 3,
+    "parse_modes": {
+     "keyword-fallback": 3
+    },
+    "score": 0.67
+   },
+   "eval_s": 3.3,
+   "error": null
+  },
+  {
+   "round": 1,
+   "family": "jpeg",
+   "severity": 3,
+   "target": "device-vlm-driving",
+   "role": "driving",
+   "score": 7.0,
+   "metrics": {
+    "score": 7.0,
+    "frames": 2,
+    "judged": {
+     "plan_safety": 8,
+     "gt_alignment": 6,
+     "hallucinations": [
+      "unknown",
+      "unknown"
+     ],
+     "over_conservative": false
+    }
+   },
+   "eval_s": 8.4,
+   "error": null
+  },
+  {
+   "round": 1,
+   "family": "jpeg",
+   "severity": 3,
+   "target": "device-vlm-perception",
+   "role": "perception",
+   "score": 0.67,
+   "metrics": {
+    "presence_recall": 0.667,
+    "presence_fp_rate": 1.0,
+    "class_accuracy": 0.333,
+    "frames": 3,
+    "parse_failures": 3,
+    "parse_modes": {
+     "keyword-fallback": 3
+    },
+    "score": 0.67
+   },
+   "eval_s": 3.8,
+   "error": null
+  },
+  {
+   "round": 2,
+   "family": "glare",
+   "severity": 4,
+   "target": "device-vlm-driving",
+   "role": "driving",
+   "score": 7.5,
+   "metrics": {
+    "score": 7.5,
+    "frames": 2,
+    "judged": {
+     "plan_safety": 9,
+     "gt_alignment": 6,
+     "hallucinations": [
+      "unknown",
+      "unknown"
+     ],
+     "over_conservative": false
+    }
+   },
+   "eval_s": 10.0,
+   "error": null
+  },
+  {
+   "round": 2,
+   "family": "glare",
+   "severity": 4,
+   "target": "device-vlm-perception",
+   "role": "perception",
+   "score": 0.67,
+   "metrics": {
+    "presence_recall": 0.667,
+    "presence_fp_rate": 1.0,
+    "class_accuracy": 0.333,
+    "frames": 3,
+    "parse_failures": 3,
+    "parse_modes": {
+     "keyword-fallback": 3
+    },
+    "score": 0.67
+   },
+   "eval_s": 3.9,
+   "error": null
+  },
+  {
+   "round": 2,
+   "family": "jpeg",
+   "severity": 3,
+   "target": "device-vlm-driving",
+   "role": "driving",
+   "score": 7.0,
+   "metrics": {
+    "score": 7.0,
+    "frames": 2,
+    "judged": {
+     "plan_safety": 8,
+     "gt_alignment": 6,
+     "hallucinations": [
+      "unknown",
+      "unknown"
+     ],
+     "over_conservative": false
+    }
+   },
+   "eval_s": 10.9,
+   "error": null
+  },
+  {
+   "round": 2,
+   "family": "jpeg",
+   "severity": 3,
+   "target": "device-vlm-perception",
+   "role": "perception",
+   "score": 0.67,
+   "metrics": {
+    "presence_recall": 0.667,
+    "presence_fp_rate": 1.0,
+    "class_accuracy": 0.333,
+    "frames": 3,
+    "parse_failures": 3,
+    "parse_modes": {
+     "keyword-fallback": 3
+    },
+    "score": 0.67
+   },
+   "eval_s": 4.7,
+   "error": null
+  }
+ ],
+ "round_log": [
+  {
+   "round": 0,
+   "ops": [],
+   "rationale": "clean baseline",
+   "source": "none",
+   "rows": [
+    {
+     "round": 0,
+     "family": null,
+     "severity": null,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.5,
+     "metrics": {
+      "score": 7.5,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 9,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "unknown",
+        "unknown"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 9.2,
+     "error": null
+    },
+    {
+     "round": 0,
+     "family": null,
+     "severity": null,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 3.6,
+     "error": null
+    },
+    {
+     "round": 1,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.0,
+     "metrics": {
+      "score": 7.0,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 8,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "The ego vehicle is driving fast",
+        "The ego vehicle is going straight"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 9.5,
+     "error": null
+    },
+    {
+     "round": 1,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 3.3,
+     "error": null
+    },
+    {
+     "round": 1,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.0,
+     "metrics": {
+      "score": 7.0,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 8,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "unknown",
+        "unknown"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 8.4,
+     "error": null
+    },
+    {
+     "round": 1,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 3.8,
+     "error": null
+    },
+    {
+     "round": 2,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.5,
+     "metrics": {
+      "score": 7.5,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 9,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "unknown",
+        "unknown"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 10.0,
+     "error": null
+    },
+    {
+     "round": 2,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 3.9,
+     "error": null
+    },
+    {
+     "round": 2,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.0,
+     "metrics": {
+      "score": 7.0,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 8,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "unknown",
+        "unknown"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 10.9,
+     "error": null
+    },
+    {
+     "round": 2,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 4.7,
+     "error": null
+    }
+   ]
+  },
+  {
+   "round": 1,
+   "ops": [
+    {
+     "family": "glare",
+     "severity": 4,
+     "pattern": "transient"
+    },
+    {
+     "family": "jpeg",
+     "severity": 3,
+     "pattern": "persistent"
+    }
+   ],
+   "rationale": "Probe untested family (snow) and escalate severities where models still cope, staying within the ops budget.",
+   "source": "engine",
+   "rows": [
+    {
+     "round": 1,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.0,
+     "metrics": {
+      "score": 7.0,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 8,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "The ego vehicle is driving fast",
+        "The ego vehicle is going straight"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 9.5,
+     "error": null
+    },
+    {
+     "round": 1,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 3.3,
+     "error": null
+    },
+    {
+     "round": 1,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.0,
+     "metrics": {
+      "score": 7.0,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 8,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "unknown",
+        "unknown"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 8.4,
+     "error": null
+    },
+    {
+     "round": 1,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 3.8,
+     "error": null
+    }
+   ]
+  },
+  {
+   "round": 2,
+   "ops": [
+    {
+     "family": "glare",
+     "severity": 4,
+     "pattern": "transient"
+    },
+    {
+     "family": "jpeg",
+     "severity": 3,
+     "pattern": "persistent"
+    }
+   ],
+   "rationale": "Probe untested family (awgn) with moderate severity, escalate severity of previously tested glare to transient, and add persistent jpeg to stay within ops budget.",
+   "source": "engine",
+   "rows": [
+    {
+     "round": 2,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.5,
+     "metrics": {
+      "score": 7.5,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 9,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "unknown",
+        "unknown"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 10.0,
+     "error": null
+    },
+    {
+     "round": 2,
+     "family": "glare",
+     "severity": 4,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 3.9,
+     "error": null
+    },
+    {
+     "round": 2,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-driving",
+     "role": "driving",
+     "score": 7.0,
+     "metrics": {
+      "score": 7.0,
+      "frames": 2,
+      "judged": {
+       "plan_safety": 8,
+       "gt_alignment": 6,
+       "hallucinations": [
+        "unknown",
+        "unknown"
+       ],
+       "over_conservative": false
+      }
+     },
+     "eval_s": 10.9,
+     "error": null
+    },
+    {
+     "round": 2,
+     "family": "jpeg",
+     "severity": 3,
+     "target": "device-vlm-perception",
+     "role": "perception",
+     "score": 0.67,
+     "metrics": {
+      "presence_recall": 0.667,
+      "presence_fp_rate": 1.0,
+      "class_accuracy": 0.333,
+      "frames": 3,
+      "parse_failures": 3,
+      "parse_modes": {
+       "keyword-fallback": 3
+      },
+      "score": 0.67
+     },
+     "eval_s": 4.7,
+     "error": null
+    }
+   ]
+  }
+ ]
+}

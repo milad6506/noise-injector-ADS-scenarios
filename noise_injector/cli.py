@@ -149,6 +149,18 @@ def cmd_report(args) -> int:
     return 0
 
 
+def cmd_run(args) -> int:
+    from .orchestrator import Orchestrator, load_experiment
+
+    exp = load_experiment(args.experiment)
+    orch = Orchestrator(exp, Path(args.out))
+    result = orch.run()
+    print("resilience per target:")
+    for t, v in result["summary"]["per_target"].items():
+        print(f"  {t}: clean {v['clean_score']} · mean retention {v['mean_retention']} · min {v['min_retention']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="noise-injector", description="Deterministic noise/error injection for ADS scenario datasets and agent harnesses.")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -198,6 +210,11 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--out", required=True, help="output HTML path")
     pr.add_argument("--previews", default=None, help="directory of preview PNGs to embed")
     pr.set_defaults(fn=cmd_report)
+
+    po = sub.add_parser("run", help="run a full resilience experiment (LLM-managed rounds)")
+    po.add_argument("--experiment", required=True, help="experiment YAML (engine + dataset + targets + rounds)")
+    po.add_argument("--out", required=True, help="run output directory (resumable)")
+    po.set_defaults(fn=cmd_run)
     return p
 
 

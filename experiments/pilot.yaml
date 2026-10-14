@@ -1,0 +1,52 @@
+# Resilience experiment template: LLM-managed rounds of perturbations.
+#
+# engine     — the LLM that MANAGES the process (proposes each round's perturbations,
+#              judges driving behavior). Any OpenAI-compatible endpoint.
+# dataset    — training/scenario dataset link (type: nuscenes | carla | waymo)
+# targets    — models under test, e.g. the model that goes on the device.
+#              vlm:   any OpenAI-compatible vision endpoint (ollama / llama.cpp server / cloud)
+#                     role: driving (judge-scored) | perception (objective scoring)
+#              yolo:  local detector (needs: pip install "noise-injector[yolo]" -> ultralytics)
+# rounds     — number of perturbation rounds after the clean baseline
+# budget     — perturbation ops proposed per round
+# families   — optional restriction of the catalog (default: all A/B/C families)
+
+name: pilot_resilience
+
+engine:
+  base_url: http://127.0.0.1:11434/v1        # e.g. ollama; or https://api.openai.com/v1
+  model: llama3.2:3b
+  api_key_env: NOISE_INJECTOR_API_KEY        # key read from this env var only
+
+dataset:
+  type: nuscenes
+  root: /path/to/DriveLM                     # dataset root
+  max_frames: 60
+
+scenarios: 1                                  # first N | 'all' | comma-separated ids
+rounds: 3
+severity_cap: 5
+budget:
+  ops_per_round: 2
+
+targets:
+  - name: device-vlm-driving
+    type: vlm
+    role: driving
+    base_url: http://127.0.0.1:11434/v1
+    model: moondream                          # vision model served on the device
+    cameras: [CAM_FRONT]
+    max_frames: 3
+  - name: device-vlm-perception
+    type: vlm
+    role: perception
+    base_url: http://127.0.0.1:11434/v1
+    model: moondream
+    cameras: [CAM_FRONT]
+    max_frames: 3
+  # - name: yolo-world
+  #   type: yolo
+  #   weights: /path/to/yolov8s-worldv2.pt
+  #   vocab: [car, van, truck, bus, pedestrian, bicycle, traffic light, stop sign]
+  #   conf: 0.25
+  #   cameras: [CAM_FRONT]

@@ -62,8 +62,9 @@ class LLMBackend:
 class FakeLLMBackend(LLMBackend):
     """Offline deterministic stub for tests/demos: returns canned rewrites without any network."""
 
-    def __init__(self, canned: str = "wrong-answer-stub", **kwargs):
-        super().__init__(base_url="http://localhost:0", model="fake-llm", **kwargs)
+    def __init__(self, base_url: str | None = None, model: str | None = None,
+                 api_key_env: str = "NOISE_INJECTOR_API_KEY", canned: str = "wrong-answer-stub", **kwargs):
+        super().__init__(base_url or "http://localhost:0", model or "fake-llm", api_key_env, **kwargs)
         self.canned = canned
         self.calls: list[tuple[str, str]] = []
 

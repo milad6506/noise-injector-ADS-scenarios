@@ -1,0 +1,31 @@
+name: drivelm-pilot
+engine:
+  base_url: http://127.0.0.1:11434/v1
+  model: llama3.2:3b
+  api_key_env: NOISE_INJECTOR_API_KEY
+dataset:
+  type: nuscenes
+  root: /Users/milad.hasanvand/Documents/DriveLM
+  max_frames: 60
+scenarios: '1'
+rounds: 2
+severity_cap: 5
+budget:
+  ops_per_round: 2
+targets:
+- name: device-vlm-driving
+  type: vlm
+  role: driving
+  base_url: http://127.0.0.1:11434/v1
+  model: moondream
+  cameras:
+  - CAM_FRONT
+  max_frames: 2
+- name: device-vlm-perception
+  type: vlm
+  role: perception
+  base_url: http://127.0.0.1:11434/v1
+  model: moondream
+  cameras:
+  - CAM_FRONT
+  max_frames: 3

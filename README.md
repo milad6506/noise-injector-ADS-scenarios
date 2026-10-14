@@ -79,7 +79,35 @@ noise-injector harness --root /path/to/judge_agent2 \
 
 noise-injector list-families
 noise-injector preview --type nuscenes --root ... --family fog --severities 1-5 --out fog.png
+
+# full resilience experiment: LLM-managed rounds against your target model
+noise-injector run --experiment experiments/pilot.yaml --out runs/pilot
 ```
+
+## Resilience experiments (rounds of perturbations)
+
+`noise-injector run` executes the complete loop — see [`experiments/pilot.yaml`](experiments/pilot.yaml):
+
+```
+[round 0] clean baseline            → score the targets on unmodified scenarios
+[round 1..N]                        → the LLM engine proposes each round's perturbations
+    engine proposal (JSON policy)   → validated against the family catalog (fallback: rotation sweep)
+    inject                          → offspring scenarios rendered (deterministic seeds)
+    evaluate                        → every target scores every offspring
+    engine sees results             → escalates severities / probes untested families
+[final]                             → resilience = mean retention (noisy/clean) per target → HTML report
+```
+
+- **engine** — the LLM that *manages the process*: any OpenAI-compatible endpoint (key via env var only)
+- **dataset** — training/scenario dataset link (`nuscenes | carla | waymo` adapter)
+- **targets** — the models under test, e.g. the model that runs on the device:
+  - `type: vlm` — any OpenAI-compatible vision endpoint (ollama / llama.cpp server / cloud);
+    `role: driving` (per-frame ego decisions, judge-scored by the engine) or
+    `role: perception` (object presence, scored objectively against key-object GT)
+  - `type: yolo` — local open-vocabulary detector (optional `ultralytics` dependency)
+- **scoring** — `recall_only` (default: fair to key-object GT; FP rate reported as diagnostic) or `strict` (recall − FP)
+- runs are **resumable** (`state.json`); the report (`resilience_report.html`) contains the final
+  resilience table, retention per (family, severity), and every engine rationale
 
 Offspring `annotations.json` preserves the DriveLM schema (per-frame `key_object_infos`,
 `QA`, `image_paths`), so downstream consumers (e.g. judge/eval harnesses) can ingest corrupted
