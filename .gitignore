@@ -5,6 +5,9 @@ __pycache__/
 build/
 dist/
 offspring/
+testset/
+data/
+runs/
 preview/*.png
 .DS_Store
 .env

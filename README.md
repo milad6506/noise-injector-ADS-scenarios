@@ -180,6 +180,53 @@ pytest
 
 The suite runs on synthetic fixtures — no dataset download required.
 
+## Examples
+
+Ready-to-run scripts live in [`examples/`](examples/):
+
+| Script | What it does |
+|---|---|
+| `examples/waymo_samples.sh` | fetch Waymo camera_box segments (gsutil) → inject annotation noise → HTML report with the scenario tree |
+| `examples/carla_public.sh` | fetch a public DriveLM-CARLA scene package (181 MB, no token) → inject fog → report |
+| `examples/harness_from_link.sh` | fetch an agent harness from a git/repo link → corrupt prompts/config copy |
+
+The typical one-call flow — name a dataset, a noise class, severities, and a sample size; the tool
+fetches, perturbs, and writes `report.html` with the **parent → children scenario tree**:
+
+```bash
+noise-injector generate --dataset waymo  --samples 3 --family missed_detections --severities 1-3 --out testset/
+noise-injector generate --dataset carla  --scenario ControlLoss --samples 1 --family fog --severities 1-3 --out testset/
+noise-injector generate --dataset drivelm --split val --samples 2 --family qa_wrong_answer --severities 2 --out testset/
+```
+
+Datasets: `waymo` (gsutil-authed GCS), `carla` (public HF packages), `drivelm` (gated HF repo — set
+`HF_TOKEN`; `--with-images` also fetches the large image archive), `lyft` (no longer hosted — use
+`fetch --link <url>` for any direct package URL). Harness injection also accepts a **link**:
+
+```bash
+noise-injector harness --link https://github.com/you/your-agent-harness --op prompt_garble --out corrupted_copy/
+```
+
+## Acknowledgments
+
+This tool and its documentation were **generated with GLM 5.3 Flash** (Z.ai), used as the
+implementation assistant throughout the project.
+
+Key references the design builds on:
+
+- Xie et al., *Are VLMs Ready for Autonomous Driving? An Empirical Study from the Reliability,
+  Data, and Metric Perspectives* (DriveBench, ICCV 2025) — [arXiv:2501.04003](https://arxiv.org/abs/2501.04003)
+- Hendrycks & Dietterich, *Benchmarking Neural Network Robustness to Common Corruptions and
+  Perturbations* (ImageNet-C) — [arXiv:1903.12261](https://arxiv.org/abs/1903.12261)
+- Michaelis et al., *Benchmarking Robustness in Object Detection: Autonomous Driving when Winter
+  is Coming* (COCO-C) — [arXiv:1907.07484](https://arxiv.org/abs/1907.07484)
+- Northcutt, Athalye & Mueller, *Pervasive Label Errors in Test Sets Destabilize Machine Learning
+  Benchmarks* — [arXiv:2210.17059](https://arxiv.org/abs/2210.17059)
+- [DriveLM](https://github.com/OpenDriveLab/DriveLM) (ECCV 2024) — dataset & GVQA schema
+- [Waymo Open Dataset](https://github.com/waymo-research/waymo-open-dataset) — camera_box parquet format
+- ISO 21448 (SOTIF) & ISO 26262 — fault classes (permanent / intermittent / transient) and
+  triggering-condition thinking behind the temporal pattern engine
+
 ## Limitations (v1)
 
 - Waymo adapter is annotation-only (image extraction from tfrecords is a separate concern)

@@ -38,6 +38,18 @@ code { background:#0d0f13; padding:1px 6px; border-radius:4px; font-size:12px; c
 .ok { color: var(--ok); } .warn { color: var(--warn); }
 .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 760px){ .grid2{grid-template-columns:1fr} }
+.tree { list-style:none; margin:10px 0; padding-left:0; font-size:13px; }
+.tree ul { list-style:none; margin:0; padding-left:26px; position:relative; }
+.tree ul::before { content:''; border-left:1px solid var(--line); position:absolute; left:10px; top:0; bottom:8px; }
+.tree li { position:relative; padding:3px 0 3px 12px; }
+.tree li::before { content:''; border-top:1px solid var(--line); position:absolute; left:10px; top:14px; width:10px; }
+.tree .node { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.tree .root-node { font-weight:700; }
+.tree .leaf { color:var(--text); }
+.tree .meta { color:var(--mut); font-size:11px; }
+.tree .child { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:2px 10px; }
+.tree .badges { display:inline-flex; gap:4px; align-items:center; }
+.tree .ev { color:var(--warn); font-size:11px; }
 footer { color:var(--mut); font-size:11.5px; margin-top:40px; }
 """
 
@@ -85,6 +97,43 @@ def collect(offspring_root: Path) -> list[dict]:
             continue
         found.append({"manifest": m, "dir": mp.parent, "rel": mp.parent.relative_to(offspring_root)})
     return found
+
+
+def tree_html(runs: list[dict]) -> str:
+    """Parent scenario → children offspring hierarchy."""
+    by_adapter: dict[str, dict[str, list[dict]]] = {}
+    for r in runs:
+        m = r["manifest"]
+        adapter = m["parent"]["adapter"]
+        sid = _scrub(str(m["parent"]["scenario_id"]))
+        by_adapter.setdefault(adapter, {}).setdefault(sid, []).append(r)
+
+    def node_badges(m: dict) -> str:
+        evs = m.get("injected_events", [])
+        badges = []
+        for e in evs:
+            layer = e.get("layer", "")
+            fam = html.escape(str(e.get("family")))
+            sev = e.get("params", {}).get("severity") or e.get("strength") or ""
+            badges.append(f"<span class='tag {layer}'>{layer}</span><code>{fam}</code>"
+                          f"<span class='ev'>S{sev}</span>")
+        n = sum(len(t.get("detail", [])) if isinstance(t.get("detail"), list) else len(t.get("targets", [])) for e in evs for t in e.get("targets", []))
+        return (" ".join(badges) +
+                f" <span class='meta'>{len(evs)} op(s) · ~{n} targets · {len(m.get('output_files', []))} files</span>")
+
+    parts = ["<ul class='tree'>"]
+    for adapter, scen in sorted(by_adapter.items()):
+        parts.append(f"<li><div class='node root-node'>📦 {html.escape(adapter)}</div><ul>")
+        for sid, children in sorted(scen.items()):
+            parts.append(f"<li><div class='node parent'>scene <code>{html.escape(sid)}</code>"
+                         f"<span class='meta'>→ {len(children)} child scenario(s)</span></div><ul>")
+            for r in sorted(children, key=lambda x: str(x["rel"])):
+                parts.append(f"<li><div class='node child leaf'>{html.escape(str(r['rel']))}"
+                             f"<span class='badges'>{node_badges(r['manifest'])}</span></div></li>")
+            parts.append("</ul></li>")
+        parts.append("</ul></li>")
+    parts.append("</ul>")
+    return "".join(parts)
 
 
 def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None = None, max_imgs_per: int = 4) -> str:
@@ -164,11 +213,14 @@ def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None
         if figs:
             previews = f"<h2>Severity progressions (visual)</h2><div class='sec'>{''.join(figs)}</div>"
 
+    tree = f"<h2>Scenario tree — parent → children</h2><div class='sec'>{tree_html(runs)}</div>"
+
     return f"""<!doctype html><html><head><meta charset="utf-8">
 <title>noise-injector report</title><style>{_CSS}</style></head><body><div class="wrap">
 <h1>noise-injector — injection report</h1>
 <div class="sub">v{__version__} · deterministic fault injection · manifests redact dataset paths by default</div>
 {cards}
+{tree}
 <div class="note">Every offspring records a <code>manifest.json</code> (recipe, seeds, per-frame injected events).
 Seeds derive from <code>sha256(scenario ‖ recipe)</code> — identical inputs reproduce byte-identical offspring,
 so all models under test see exactly the same corrupted inputs.</div>
