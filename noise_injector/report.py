@@ -45,7 +45,7 @@ h2 { font-size:17px; margin:26px 0 8px; border-bottom:1px solid var(--line); pad
 .badge.clean{color:var(--ok);border-color:var(--ok)}
 .dose { color:var(--mut); font-size:11.5px; }
 .player { margin-top:10px; }
-.viewport { background:#0a0c10; border:1px solid var(--line); border-radius:10px; height:320px; display:flex;
+.viewport { background:#20242c; border:1px solid var(--line); border-radius:10px; min-height:300px; display:flex;
             align-items:center; justify-content:center; overflow:hidden; }
 .viewport img, .viewport canvas { max-width:100%; max-height:100%; display:none; }
 .viewport img.active, .viewport canvas.active { display:block; }
@@ -136,11 +136,11 @@ def _frames_from_annotations(offspring_dir: Path, ann: dict) -> tuple[str, list]
     return "boxes", frames, {k: [round(v[0] + 20), round(v[1] + 20)] for k, v in dims.items()}
 
 
-def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge: str, desc: str) -> dict:
+def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge: str, desc: str, veil: float = 0.0) -> dict:
     with open(offspring_dir / "annotations.json") as f:
         ann = json.load(f)
     kind, frames, extra = _frames_from_annotations(offspring_dir, ann)
-    payload = {"label": label, "badge": badge, "desc": desc, "kind": kind, "frames": frames}
+    payload = {"label": label, "badge": badge, "desc": desc, "kind": kind, "frames": frames, "veil": veil}
     if kind == "boxes":
         payload["dims"] = extra
     else:
@@ -198,9 +198,13 @@ def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None
                     continue
                 n_children += 1
                 skey = f"{adapter}:{sid}:{k['key']}"
+                veil = 0.0
+                for ev in k["m"]["injected_events"]:
+                    if ev.get("family") == "fog":
+                        veil = float((ev.get("params") or {}).get("amount", 0.0))
                 scenario_data[skey] = _scenario_payload(skey, k["dir"], html.escape(k["key"]),
                                                         str(k["m"]["injected_events"][0].get("layer", "")),
-                                                        _child_description(k["m"]))
+                                                        _child_description(k["m"]), veil=veil)
                 child_items.append(f"""
     <div class="child-box">
       <div class="child-head"><span class="badge {scenario_data[skey]['badge']}">{scenario_data[skey]['badge']}</span>
@@ -309,34 +313,54 @@ function showFrame(key, dom, i){
     }
   } else {
     const fr = d.frames[i];
-    const key_dims = {};
-    for (const b of fr.boxes) { key_dims[b.cam] = d.dims[b.cam] || [800, 500]; }
     const canvas = document.createElement('canvas');
     canvas.className = 'active';
-    const dims = Object.values(key_dims)[0] || [800, 500];
-    const H = Math.min(300, dims[1] * (280 / dims[0]) + 20);
-    canvas.width = Math.min(860, dims[0] * (280 / dims[1]) + 20);
-    canvas.height = Math.max(120, H);
+    canvas.width = 860; canvas.height = 280;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#0a0c10'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const colors = {Vehicle:'#4f8cff', Pedestrian:'#2fbf71', Cyclist:'#e0a526', Unknown:'#8b93a5'};
-    const camsPresent = [...new Set(fr.boxes.map(b=>b.cam))];
-    let idx = 0;
-    for (const cam of camsPresent) {
+    const horizon = canvas.height * 0.42;
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, '#e8edf4'); sky.addColorStop(1, '#c3ccd8');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, canvas.width, horizon);
+    const road = ctx.createLinearGradient(0, horizon, 0, canvas.height);
+    road.addColorStop(0, '#9aa3ad'); road.addColorStop(1, '#6f7883');
+    ctx.fillStyle = road; ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.setLineDash([14, 12]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(canvas.width / 2 - 30, canvas.height); ctx.lineTo(canvas.width / 2 + 4, horizon); ctx.stroke();
+    ctx.setLineDash([]);
+    const colors = {Vehicle:'#1c5fd8', Pedestrian:'#1e7d47', Cyclist:'#b57d13', Unknown:'#5c6570'};
+    const camsPresent = [...new Set(fr.boxes.map(b=>b.cam))].sort();
+    const panelW = canvas.width / Math.max(1, Math.min(camsPresent.length, 3));
+    camsPresent.forEach((cam, idx) => {
+      const col = idx % 3, row = Math.floor(idx / 3);
+      const ox = col * panelW + 6, oy = row * 6;
       const dim = d.dims[cam] || [900, 600];
-      const ox = idx * 10, oy = idx * 8;
-      const sw = (canvas.width - ox - 10) / dim[0], sh = (canvas.height - oy - 10) / dim[1];
-      ctx.font = '10px sans-serif'; ctx.fillStyle = '#8b93a5';
-      ctx.fillText(cam, ox + 4, oy + 12);
+      const pw = panelW - 14, ph = canvas.height - oy - 10;
+      const sw = pw / dim[0], sh = ph / dim[1];
+      ctx.strokeStyle = 'rgba(90,100,115,0.5)'; ctx.lineWidth = 1;
+      ctx.strokeRect(ox, oy, pw, ph);
+      ctx.font = '10px sans-serif'; ctx.fillStyle = '#5c6570';
+      ctx.fillText(cam, ox + 5, oy + 12);
       for (const b of fr.boxes) {
         if (b.cam !== cam) continue;
-        ctx.strokeStyle = colors[b.c] || '#8b93a5';
-        ctx.lineWidth = 1.5;
+        const depth = Math.max(0, Math.min(1, (b.y2 / dim[1]) - 0.35) / 0.65);
+        const alpha = (0.25 + 0.75 * depth) * (1 - (d.veil || 0) * 0.55);
+        ctx.strokeStyle = colors[b.c] || '#5c6570';
+        ctx.globalAlpha = alpha; ctx.lineWidth = 2.5;
         ctx.strokeRect(ox + b.x1 * sw, oy + b.y1 * sh, (b.x2 - b.x1) * sw, (b.y2 - b.y1) * sh);
-        ctx.fillStyle = colors[b.c] || '#8b93a5';
+        ctx.fillStyle = colors[b.c] || '#5c6570';
         ctx.fillText(b.c, ox + b.x1 * sw, oy + b.y1 * sh - 3);
       }
-      idx++;
+      ctx.globalAlpha = 1;
+    });
+    if (d.veil > 0) {
+      const fogGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      fogGrad.addColorStop(0, 'rgba(233,236,240,' + Math.min(1, d.veil * 1.05) + ')');
+      fogGrad.addColorStop(0.42, 'rgba(228,231,236,' + (d.veil * 0.95) + ')');
+      fogGrad.addColorStop(1, 'rgba(225,228,233,' + (d.veil * 0.35) + ')');
+      ctx.fillStyle = fogGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = 'rgba(50,60,80,0.8)';
+      ctx.fillText('fog severity veil ' + Math.round(d.veil * 100) + '%', 10, canvas.height - 10);
     }
     vp.appendChild(canvas);
   }
