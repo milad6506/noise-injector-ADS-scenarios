@@ -1,0 +1,4 @@
+name: fog_sweep
+ops:
+  - family: fog
+    severity: 3

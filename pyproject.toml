@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "noise-injector"
+version = "0.1.0"
+description = "Deterministic fault-injection tool: creates noise/error-corrupted offspring scenarios from autonomous-driving scenario datasets (DriveLM-nuScenes, DriveLM-CARLA, Waymo camera_box) and agent-harness artifacts (prompts, configs)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "milad6506" }]
+keywords = ["autonomous-driving", "robustness", "noise-injection", "drivelm", "waymo", "fault-injection"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "Pillow>=10.0",
+    "PyYAML>=6.0",
+    "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+waymo = ["pyarrow>=14.0", "pandas>=2.0"]
+dev = ["pytest>=7.0", "pyarrow>=14.0", "pandas>=2.0"]
+
+[project.scripts]
+noise-injector = "noise_injector.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["noise_injector*"]

@@ -1,0 +1,10 @@
+name: benign_human_annotation
+ops:
+  - family: missed_detections
+    severity: 2
+  - family: bbox_jitter
+    severity: 2
+  - family: class_confusion
+    severity: 2
+  - family: qa_wrong_answer
+    severity: 2

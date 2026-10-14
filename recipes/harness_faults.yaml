@@ -1,0 +1,11 @@
+name: harness_faults_mixed
+ops:
+  - family: prompt_section_delete
+    severity: 2
+    targets: ["prompts/simple_prompt.txt", "prompts/modular_simple.txt"]
+  - family: vocab_drop
+    severity: 2
+    targets: ["config.json"]
+  - family: confidence_drift
+    severity: 3
+    targets: ["config.json"]

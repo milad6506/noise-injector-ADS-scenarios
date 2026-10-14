@@ -1,0 +1,10 @@
+name: sensor_stress_compound
+ops:
+  - family: low_light
+    severity: 3
+  - family: awgn
+    severity: 2
+  - family: jpeg
+    severity: 2
+  - family: frame_freeze
+    severity: 2
