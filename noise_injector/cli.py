@@ -246,6 +246,11 @@ def cmd_generate(args) -> int:
     print(f"[inject] {len(ids)} parent(s) x {args.family} severities {severities}")
     for sid in ids:
         sc = adapter.get_scenario(sid)
+        clean_dest = out_root / "offspring" / adapter.name / sid / "clean"
+        if not (clean_dest / "annotations.json").exists():
+            render_scenario(sc, {"name": "clean", "ops": []}, clean_dest,
+                            derive_seed(args.seed, sid, "clean"), root=str(adapter.root))
+            print(f"    rendered: {clean_dest} (baseline)")
         for s in severities:
             recipe = make_recipe(args.family, args.family, [s])[0]
             dest = out_root / "offspring" / adapter.name / sid / recipe["name"]

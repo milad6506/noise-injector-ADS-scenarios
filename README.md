@@ -207,6 +207,18 @@ Datasets: `waymo` (gsutil-authed GCS), `carla` (public HF packages), `drivelm` (
 noise-injector harness --link https://github.com/you/your-agent-harness --op prompt_garble --out corrupted_copy/
 ```
 
+## The generated report
+
+Every `generate`/`inject` run ends with a **self-contained interactive `report.html`**:
+
+- **Top level = the basic (parent) scenarios** — click a parent to expand the **generated children**
+  with per-child descriptions (family rationale, pattern, severity, dose)
+- **Every scenario is playable**: a horizontal scrubber (first frame → last frame) with play/pause —
+  image frames for nuScenes/CARLA (with camera chips), animated 2D-box canvas for Waymo
+  annotation-only segments
+- Each parent includes a **clean baseline** child so you can compare perturbed vs untouched
+- Fully offline single file: images embedded as data URIs, vanilla JS, no CDNs
+
 ## Acknowledgments
 
 This tool and its documentation were **generated with GLM 5.3 Flash** (Z.ai), used as the

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from noise_injector.fetch import download, fetch_link
-from noise_injector.report import collect, tree_html, write_report
+from noise_injector.report import build_report, collect, write_report
 from noise_injector.render import make_recipe, render_scenario
 from noise_injector.adapters.base import get_adapter
 
@@ -90,17 +90,17 @@ def test_report_tree_view(tmp_path):
     ad = get_adapter("nuscenes", root)
     sc = ad.get_scenario("sceneA")
     off = tmp_path / "offspring"
+    render_scenario(sc, {"name": "clean", "ops": []}, off / "clean", seed=1, root=str(root))
     for fam in ("fog", "awgn"):
         for sev in (1, 2):
             recipe = make_recipe(fam, fam, [sev])[0]
-            render_scenario(sc, recipe, off / fam + f"_s{sev}" if False else off / f"{fam}_s{sev}",
-                            seed=1, root=str(root))
+            render_scenario(sc, recipe, off / f"{fam}_s{sev}", seed=1, root=str(root))
     runs = collect(off)
-    assert len(runs) == 4
-    html = tree_html(runs)
-    assert "root-node" in html and "sceneA" in html
-    assert html.count("child leaf") == 4
+    assert len(runs) == 5
     report = write_report(off, tmp_path / "report.html")
     content = report.read_text()
-    assert "Scenario tree" in content
+    assert "generated test scenarios" in content
+    assert "sceneA" in content
+    assert content.count("child-box") >= 4
+    assert "player" in content and "range" in content
     assert "/Users" not in content
