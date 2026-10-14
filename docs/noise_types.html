@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>noise-injector — Noise Types: Philosophy &amp; Algorithms</title>
+<style>
+:root { --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#d7dae0; --mut:#8b93a5; --acc:#4f8cff; --ok:#2fbf71; --warn:#e0a526; --bad:#e05252; --pur:#c06cff; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 30px 20px 70px; }
+h1 { font-size: 23px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 40px 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+h3 { font-size: 15px; margin: 20px 0 6px; color: var(--acc); }
+h4 { font-size: 14px; margin: 14px 0 4px; }
+.sub { color: var(--mut); font-size: 12.5px; }
+.tag { display:inline-block; padding:1px 9px; border-radius:99px; font-size:11px; margin-right:5px; border:1px solid var(--line); background:var(--card); font-weight:600; }
+.tag.A{border-color:#4f8cff;color:#4f8cff}.tag.B{border-color:#2fbf71;color:#2fbf71}.tag.C{border-color:#e0a526;color:#e0a526}.tag.F{border-color:#c06cff;color:#c06cff}.tag.L{border-color:#2fbf71;color:#2fbf71;border-style:dashed}
+.fam { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 18px; margin:12px 0; }
+.fam .head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.fam .name { font-weight:700; font-size:14.5px; }
+.fam .id { color:var(--mut); font-size:11px; }
+.fam .sev { margin-left:auto; color:var(--mut); font-size:11.5px; }
+.block { margin-top:8px; }
+.block .lbl { font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin-bottom:2px; }
+.phil { border-left:3px solid var(--acc); padding:4px 0 4px 12px; }
+.algo { border-left:3px solid var(--warn); padding:4px 0 4px 12px; }
+code, .f { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:#9ecbff; }
+.f { background:#0d0f13; padding:6px 10px; border-radius:6px; display:inline-block; margin:3px 0; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+th { text-align:left; color:var(--mut); font-weight:600; padding:6px 10px; border-bottom:1px solid var(--line); }
+td { padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+.note { border-left:3px solid var(--acc); background:var(--card); padding:10px 14px; border-radius:0 8px 8px 0; margin:14px 0; font-size:13.5px; }
+.warnbox { border-left-color: var(--warn); }
+.pats { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin:14px 0; }
+.pat { text-align:center; }
+.pat .bars { display:flex; gap:2px; align-items:flex-end; height:34px; }
+.pat .b { width:13px; border-radius:2px 2px 0 0; background:#2a3140; height:6px; }
+.pat .b.on { background:var(--acc); height:34px; }
+.pat .cap { color:var(--mut); font-size:11px; margin-top:4px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media (max-width:760px){ .grid2{grid-template-columns:1fr} }
+footer { color:var(--mut); font-size:11.5px; margin-top:46px; }
+ul { margin:6px 0; padding-left:22px; } li { margin:3px 0; }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>noise-injector — Noise Types: Philosophy &amp; Algorithms</h1>
+<div class="sub">Companion to <code>docs/TAXONOMY.md</code> · every implemented injection family, why it exists, and exactly how it is computed</div>
+
+<h2>1 · The philosophy: degrade the input, not the world</h2>
+<p>The tool's central idea is <b>fault injection, not data augmentation</b>. A parent scenario (its frames,
+cameras, annotations, QA graph, harness) is treated as a <em>system under test</em>; each offspring is the same
+system with one controlled fault applied. Three principles drive the design:</p>
+<div class="note"><b>1 · Isolation.</b> One fault family per offspring — if a model fails under fog at severity 4,
+we must know it was the fog. Compound recipes exist, but they are explicit combinations, never accidents.</div>
+<div class="note"><b>2 · Physical plausibility.</b> Every image family models a real sensor or environment phenomenon
+with a monotonic severity curve (1 = subtle, 5 = extreme), following the ImageNet-C / DriveBench convention.
+Realism is approximate but the <em>direction and dose-response</em> are honest.</div>
+<div class="note"><b>3 · Determinism.</b> <code>seed = sha256(scenario_id ‖ recipe_id)</code>, and every corruption
+draws its randomness from child seeds derived from that master seed. Two models evaluated on the same offspring
+see <em>byte-identical</em> corrupted inputs — the comparison is fair by construction, not by averaging.</div>
+
+<h2>2 · The injection model</h2>
+<table>
+<tr><th>Component</th><th>Meaning</th><th>Values</th></tr>
+<tr><td><b>mode</b></td><td>what is injected</td><td>47+ families across layers A, B, C, F</td></tr>
+<tr><td><b>scope</b></td><td>where it lands</td><td>scenario · camera(i) · frame(t) · object(o) · qa(q) · harness-file</td></tr>
+<tr><td><b>pattern</b></td><td>temporal shape over T frames</td><td>persistent · intermittent · burst · transient · camera_scoped</td></tr>
+<tr><td><b>magnitude</b></td><td>intensity curve</td><td>per-family f(severity), severity ∈ 1..5</td></tr>
+<tr><td><b>rate</b></td><td>probability of discrete errors</td><td>per-family g(severity)</td></tr>
+<tr><td><b>seed</b></td><td>reproducibility</td><td>sha256(scenario ‖ recipe) → per-op, per-frame child seeds</td></tr>
+</table>
+
+<h2>3 · The temporal pattern engine</h2>
+<p>Corruptions differ not only in <em>what</em> they destroy but <em>when</em>. A foggy highway and a frozen
+camera degrade visibility similarly — but one kills spatial grounding while the other kills temporal grounding.
+Each family declares a default pattern; recipes may override it.</p>
+<div class="pats">
+  <div class="pat"><div class="bars"><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div></div><div class="cap">persistent — all frames</div></div>
+  <div class="pat"><div class="bars"><div class="b on"></div><div class="b on"></div><div class="b"></div><div class="b"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b"></div><div class="b"></div><div class="b on"></div></div><div class="cap">intermittent — Markov on/off</div></div>
+  <div class="pat"><div class="bars"><div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cap">burst — contiguous k frames</div></div>
+  <div class="pat"><div class="bars"><div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div><div class="b on"></div><div class="b"></div><div class="b"></div><div class="b"></div><div class="b"></div></div><div class="cap">transient — exactly one frame</div></div>
+  <div class="pat"><div class="bars"><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div><div class="b on"></div></div><div class="cap">camera_scoped — 1 camera, all frames</div></div>
+</div>
+<div class="f">persistent: mask[t] = True ∀t&nbsp;&nbsp;·&nbsp;&nbsp; transient: one frame at rand(0,T)&nbsp;&nbsp;·&nbsp;&nbsp; burst: k = clamp(severity,1,T) contiguous frames at seeded offset</div>
+<div class="f">intermittent: Markov chain — stay-on p = 0.55+0.08·s ; re-fire p = 0.5·(0.25+0.12·s)&nbsp;&nbsp;·&nbsp;&nbsp; camera_scoped: one seeded camera index, persistent over frames</div>
+
+<h2>4 · Layer A — the sensor signal path</h2>
+<p><span class="tag A">A</span> Image corruptions follow the physical signal path of a camera:
+<b>light and atmosphere</b> (fog, rain, snow, glare) → <b>exposure &amp; optics</b> (low/high exposure, blur,
+aberration) → <b>sensor electronics</b> (noise, dead pixels, banding) → <b>digital pipeline</b> (JPEG,
+quantization) → <b>structural stream faults</b> (freeze, dropout, desync). Severity 1 is "a bad afternoon";
+severity 5 is "the sensor is lying to you".</p>
+
+<h3>Atmosphere &amp; weather</h3>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">fog</span><span class="id">A-01</span><span class="sev">veil 0.15 → 0.75</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Atmospheric scattering (Koschmieder's law): light from distant objects is absorbed and a veiling
+glow added along the line of sight. Distance-dependent contrast loss is the signature — far objects die first.
+Tests whether models truly perceive depth or merely match texture priors.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Depth-graded veil W = 205·(0.75 + 0.5·x/w), applied per-column; global contrast reduction (1−0.4a):
+<div class="f">I' = I·(1−a) + W·a&nbsp;&nbsp;then&nbsp;&nbsp;I' = (I'−μ)·(1−0.4a) + μ</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">rain</span><span class="id">A-02</span><span class="sev">40 → 400 streaks</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Rain appears as short directional streaks (15° slant) plus scene darkening. It is a
+<b>structured occluder</b> — it masks thin structures (poles, pedestrians' limbs) and invites motion-blur misreads.
+DriveBench showed models confabulate speed under heavy rain.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Draw n random streaks of length 8–22 px at 15° into an alpha layer, Gaussian-smooth (σ≈1),
+multiply channels by (1−layer), then darken by d:
+<div class="f">I' = I·(1−L)·(1−d)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">snow</span><span class="id">A-03</span><span class="sev">density 0.2 → 2 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Snow = high-frequency white particle fall + diffuse haze. Unlike rain (directional),
+snow is isotropic noise — it tests whether perception tracks many small bright blobs or the road behind them.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>N = density·H·W white particles with random intensities 0.6–1.0 in a layer, blurred 3×3, screen-blended after a uniform 8 % darkening:
+<div class="f">I' = I·(1−L) + 255·L&nbsp;&nbsp;with&nbsp;&nbsp;I·0.92 beforehand</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">water_splash</span><span class="id">A-04</span><span class="sev">alpha 0.15 → 0.45</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Driving through standing water throws large translucent blobs onto the lower lens region —
+a <b>regionally destructive</b> corruption: the most safety-critical image zone (road surface) is hit hardest.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Random blob field (upscaled, blurred), clipped and weighted by a bottom-half region ramp, screen-blended with a brightened blur:
+<div class="f">I' = I·(1−M) + (blur(I)+60)·M&nbsp;&nbsp;with&nbsp;&nbsp;M = blobs·bottomRamp·α</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">glare</span><span class="id">A-07</span><span class="sev">intensity 0.15 → 0.50</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Sun or oncoming high-beams saturate a local disk of the image. Defaults to a
+<b>transient</b> pattern — glare flashes are momentary. Tests "photometric blindfolding": can the model notice it
+cannot see, rather than answering from priors (the failure DriveBench documents most).</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Seeded center (upper band), radius r = 0.25–0.45·max(W,H):
+<div class="f">g = clip(1 − dist/r, 0, 1)²·int&nbsp;&nbsp;;&nbsp;&nbsp;I' = I + g·(255−I)</div></div></div>
+
+<h3>Exposure &amp; optics</h3>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">low_light</span><span class="id">A-05</span><span class="sev">γ 1.4 → 3.2 + noise</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Night/dusk underexposure: photons scarce, sensor gain high. Darkness and noise arrive
+<b>together</b> — models that handle darkness but not noise (or vice versa) reveal which compensations they rely on.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Gamma darkening in linear space plus read noise:
+<div class="f">I' = (I/255)^γ · 255 + N(0, σ)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">overexposure</span><span class="id">A-06</span><span class="sev">strength 0.15 → 0.46</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>The inverse: bright skies, reflections, direct headlights clip highlights.
+Unlike uniform glare, blowout is <b>luminance-gated</b> — only bright regions suffer.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>On luminance above threshold 170, blend toward 255 with strength s:
+<div class="f">I' = I + s·clip((L−170)/85, 0, 1)·(255−I)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">motion_blur</span><span class="id">A-09</span><span class="sev">kernel 5 → 33 px</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Integration of ego motion during one exposure — horizontal, like real forward driving.
+The archetypal "temporal information smeared into spatial": VLMs read blur as speed (DriveBench's motion-blur finding).</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Horizontal box-kernel convolution, normalized:
+<div class="f">I' = conv(I, K)&nbsp;&nbsp;with&nbsp;&nbsp;K[k/2, :] = 1/k</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">defocus</span><span class="id">A-10</span><span class="sev">σ 0.6 → 3.5</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Autofocus failure — isotropic blur. Compared against motion_blur it isolates
+<b>direction matters</b>: same energy spread, different physical cause, different model behavior.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">I' = G_blur(I, σ)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">bloom</span><span class="id">A-08</span><span class="sev">strength 0.2 → 0.6</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Over-saturated pixels bleed into neighbors (sensor + lens glow) — bright objects grow
+halos that <em>inflate</em> apparent size, corrupting distance and orientation estimates.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Bright mask (lum &gt; 200) Gaussian-blurred σ=12, screen-blended:
+<div class="f">I' = I + s·blur(clip((L−200)/55))·(255−I)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">chromatic_aberration</span><span class="id">A-16</span><span class="sev">shift 1 → 7 px</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Lens dispersion separates color channels laterally — edges get color fringes.
+Subtle at S1, text/sign-reading killer at S5.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Opposed horizontal rolls:
+<div class="f">R' = roll(R, +s) ; B' = roll(B, −s) ; G unchanged</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">color_cast</span><span class="id">A-19</span><span class="sev">gain 5 → 27 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>White-balance failure (tunnel sodium lamps, sunset). Shifts the color statistics models
+use as scene priors.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Seeded tint channel t: gain up, others down:
+<div class="f">C_t ×= (1+g) ; C_else ×= (1−g/2)</div></div></div>
+
+<h3>Sensor electronics</h3>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">awgn</span><span class="id">A-12</span><span class="sev">σ 2 → 22</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>The baseline stochastic noise — additive white Gaussian (read noise + gain). The
+reference dose-response every other family is compared against.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">I' = I + N(0, σ²) per pixel per channel</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">salt_pepper</span><span class="id">A-13</span><span class="sev">p 0.2 → 3.2 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Impulse noise — memory bit errors, ADC glitches. Extreme low-rate spikes, unlike
+AWGN's smooth field.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Per pixel: p/2 → 0 (pepper), next p/2 → 255 (salt).</div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">dead_pixels</span><span class="id">A-14</span><span class="sev">1 → 12 clusters</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Permanent sensor defects — stuck bright/dark pixel clusters. <b>Deterministic
+geometry</b> (seeded): a calibration artifact the model could theoretically learn to ignore.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>n clusters, each 1–4 px half-extent, filled 0 or 255 at seeded positions.</div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">banding</span><span class="id">A-15</span><span class="sev">amplitude 3 → 16</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>PWM LED flicker / rolling illumination interacts with sensor line rate → horizontal
+illuminations bands. Structure inside noise.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">I'[y] += A·sin(2π·f·y/H + φ)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">rolling_shutter</span><span class="id">A-11</span><span class="sev">shear 1 → 8 px</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>CMOS line-by-line capture + ego rotation = geometric skew of scene content. Corrupts
+<b>geometry itself</b> — boxes still exist but no longer align.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Rows split in bands of H/24, each rolled by A·sin(band phase).</div></div>
+
+<h3>Lens &amp; digital pipeline</h3>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">lens_droplets</span><span class="id">A-17</span><span class="sev">3 → 24 droplets</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Rain on the lens — small high-contrast local lenses showing a blurred, brightened
+world. Localized optics, not global haze.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>n circles r=2–9 px in an alpha layer (seeded positions, lower-weighted), blurred, blended with blur(I)+25:
+<div class="f">I' = I·(1−L) + (blur(I)+25)·L</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">lens_dirt</span><span class="id">A-18</span><span class="sev">coverage 2 → 11 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Mud/smudge on the lens — exactly the top-<code>coverage</code> fraction of a random
+fractal blob field becomes semi-opaque dirt. Quantile thresholding <b>guarantees</b> the dose: severity means
+exactly what it says.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Field B = blur(resize(rand)) → thr = quantile(B, 1−c) →
+<div class="f">M = clip((B−thr)/0.25, 0, 1)·0.85 ; I' = I·(1−M) + (blur(I)·0.6 + tint)·M</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">jpeg</span><span class="id">A-21</span><span class="sev">quality 55 → 5</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Compression blocking — the corruption every real system actually has. Tests
+sensitivity to encoding, not to the world.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Decode-reencode cycle at quality Q (8×8 DCT quantization tables do the damage).</div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">quantization</span><span class="id">A-20</span><span class="sev">levels 48 → 3</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Bit-depth loss in degraded links — posterization. Color-adjacent object classes
+become indistinguishable.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">I' = round(I / step)·step&nbsp;&nbsp;with&nbsp;&nbsp;step = 255/(L−1)</div></div></div>
+
+<h3>Structural stream faults</h3>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">frame_freeze</span><span class="id">A-22</span><span class="sev">burst ≤ severity</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>The camera <em>lies calmly</em>: a stalled stream repeats old frames. Visually
+"clean" but temporally wrong — the purest test of temporal grounding, and a favorite adversarial for planners
+that steer by optical flow.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Burst mask selects frames (never frame 0); each frozen frame's output image = byte-copy of the previous frame's <em>rendered</em> image:
+<div class="f">out[t] = out[t−1]&nbsp;&nbsp;(chained freezes propagate)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">camera_dropout</span><span class="id">A-23</span><span class="sev">black (S1–3) / missing (S4–5)</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>One camera dies (camera_scoped): early severities emit black frames ("I exist but see
+nothing"), late severities remove the stream ("I never existed"). These are <b>different epistemic situations</b>
+and models must treat them differently.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>camera_scoped mask picks 1 camera; black → zeroed image written; missing → image path = null in annotations.json.</div></div>
+
+<div class="fam"><div class="head"><span class="tag A">A</span><span class="name">camera_desync</span><span class="id">A-24</span><span class="sev">offset 1 frame</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>One camera lags one frame — <em>stale but valid</em> imagery. Nothing is missing;
+content is merely from t−1. Punishes naive multi-camera fusion that assumes simultaneity.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Transient pattern; for affected frames t: camera's source image = frame t−1's source (pixel ops of the stale frame still apply).</div></div>
+
+<h2>5 · Layer B — perception / annotation degradation</h2>
+<p><span class="tag B">B</span> This layer attacks the <b>symbolic interface</b>: the
+<code>key_object_infos</code> that modular pipelines (detector→LLM) and QA generation depend on. Philosophy:
+a detector has a capability <em>ceiling</em> (which it hits on clean data) and a <em>variance</em> (how it behaves
+near that ceiling). Layer B injects the variance — under noise, detector-direct scenarios silently drop to
+"mixed" tiers. Error placement follows semantic structure: confusions happen between <em>similar</em> classes,
+misses concentrate on hard objects — never uniform coin flips.</p>
+
+<div class="fam"><div class="head"><span class="tag B">B</span><span class="name">missed_detections</span><span class="id">B-01</span><span class="sev">rate 5 → 50 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Recall failure — the object exists in the world but the perception stack never reports it.
+The "no evidence ≠ absence" killer: downstream logic that treats an empty report as an empty road is unsafe by design.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">∀ object o: drop(o) with P = rate</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag B">B</span><span class="name">phantom_objects</span><span class="id">B-02</span><span class="sev">rate 3 → 25 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>False positives — hallucinated boxes near real ones, category drawn from the confusion
+vocabulary. Tests whether reasoning pipelines (LLM consumers) verify detections or trust them.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>For n_add ≈ rate·n objects: clone a random existing bbox, jitter all coordinates N(0,30),
+min size 5 px, key <code>&lt;p#,Category&gt;</code>, description "phantom object".</div></div>
+
+<div class="fam"><div class="head"><span class="tag B">B</span><span class="name">bbox_jitter</span><span class="id">B-03</span><span class="sev">σ 4 → 34 px</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Localization noise — the object is seen but <em>where</em> is wrong. Corrupts
+distance/position QA answers derived from box coordinates.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">v' = max(0, v + N(0, σ)) ∀ coords ; min edge 2 px</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag B">B</span><span class="name">class_confusion</span><span class="id">B-04</span><span class="sev">rate 2 → 30 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Semantic confusion within sets (Vehicle↔Cyclist↔Pedestrian). Real confusion matrices are
+<b>band-diagonal</b> — a truck becomes a bus, never a raindrop. Right-of-way logic downstream is what actually breaks.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">∀ o: Category' = uniform(confusion_set(Category)) with P = rate</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag B">B</span><span class="name">status_flip</span><span class="id">B-05</span><span class="sev">rate 2 → 30 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Motion-state corruption (Moving↔Stationary) — prediction and intention QA rest on
+exactly this bit. A flipped bus state reverses the correct ego action.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>flip(Moving↔Stationary) with P=rate; null states (CARLA) untouched.</div></div>
+
+<div class="fam"><div class="head"><span class="tag B">B</span><span class="name">max_det_truncation</span><span class="id">B-06</span><span class="sev">cap 10 → 2</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Detector capacity limits — object counts beyond the cap are silently discarded. Grounded
+in the Waymo census finding (mean 12.1 objects/camera-frame, p99 = 64): too-low caps delete exactly the rare
+objects that matter.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Keep a uniformly seeded subset of <code>cap</code> objects; drop the rest.</div></div>
+
+<div class="fam"><div class="head"><span class="tag L">B·LLM</span><span class="name">llm_description_drift</span><span class="id">B-07</span><span class="sev">rate 2 → 30 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Corrupts <em>semantics in natural language</em> — the Visual_description each object carries.
+A subtle wrong attribute ("navy SUV" → "yellow SUV") is precisely the error class only a language model can author.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Per object (rate): prompt an OpenAI-compatible backend — "rewrite with exactly one
+subtly wrong attribute (color, size, count, type)". Cached by prompt-hash → deterministic re-renders.</div></div>
+
+<h2>6 · Layer C — QA / training-data errors</h2>
+<p><span class="tag C">C</span> Attacks the <b>supervision itself</b> — the QA pairs models are fine-tuned on and
+judged against. Three regimes set the rates: <b>benign human</b> (3–8 % label error, semantic confusions — what
+real annotations contain), <b>systematic pipeline</b> (20–50 %, what auto-labeled sets contain), and
+<b>adversarial</b> (0.1–5 %, targeted — Layer E, next round). Placement is category-weighted: perception QAs are
+easy to verify (fewest benign errors), planning the most subjective.</p>
+
+<div class="fam"><div class="head"><span class="tag C">C</span><span class="name">qa_wrong_answer</span><span class="id">C-01</span><span class="sev">rate 2 → 30 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>The classic label error: a plausible but wrong answer. MCQ items get a different
+choice; open-ended items get a pool-swap — preserving <em>plausibility</em>, destroying truth.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>choices ≠ null → uniform(other choices); else uniform(canned pool ∪ sibling answers) ≠ old.</div></div>
+
+<div class="fam"><div class="head"><span class="tag C">C</span><span class="name">qa_answer_drift</span><span class="id">C-02</span><span class="sev">rate 2 → 25 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div><b>Polarity corruption</b> — token swaps that reverse meaning (left↔right, stop↔go,
+red↔green, slow↔fast). Small edits, catastrophic semantics: the exact error class that turns safe plans into
+dangerous ones while keeping text quality high.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>First token in the swap map replaced (one swap per answer).</div></div>
+
+<div class="fam"><div class="head"><span class="tag C">C</span><span class="name">qa_category_misassign</span><span class="id">C-03</span><span class="sev">rate 2 → 25 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Graph-structure corruption: perception answers filed under planning. The QA graph's
+category edges are what make DriveLM "GVQA" — this tests whether consumers actually use the graph or just text.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Selected items (rate) move to a uniform <em>different</em> category.</div></div>
+
+<div class="fam"><div class="head"><span class="tag C">C</span><span class="name">qa_drop</span><span class="id">C-04</span><span class="sev">rate 2 → 30 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Missing supervision — QA holes in the training set. The model's grounding chain
+(perception→prediction→planning) loses rungs.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>∀ item: drop with P=rate.</div></div>
+
+<div class="fam"><div class="head"><span class="tag C">C</span><span class="name">qa_duplicate</span><span class="id">C-05</span><span class="sev">rate 2 → 25 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Duplicated labels — the least studied but common curation bug; biases loss
+toward duplicated behaviors (reinforcing majority-class answers).</div>
+<div class="block algo"><div class="lbl">Algorithm</div>∀ item: append copy with P=rate.</div></div>
+
+<div class="fam"><div class="head"><span class="tag C">C</span><span class="name">qa_crossref_break</span><span class="id">C-06</span><span class="sev">rate 2 → 30 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Object references <code>&lt;c#,CAM,x,y,z&gt;</code> are the QA graph's pointers. Broken
+pointers = perception disconnected from questions — the "graph integrity" error no benchmark currently tests.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">&lt;c# → &lt;c#+17&nbsp;&nbsp;(dangling reference, no matching object)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag L">C·LLM</span><span class="name">llm_qa_rewrite</span><span class="id">C-07</span><span class="sev">rate 2 → 30 %</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Rule-based corruptions are recognizable; an LLM authors <b>human-grade wrongness</b>.
+Three styles target different failure research: <b>plausible_wrong</b> (label noise), <b>vague</b> (information
+loss), <b>hallucinated</b> (adds non-existent content — DriveBench's hallucination mode, injected into training data).</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Bring-your-own OpenAI-compatible backend (<code>--llm-base-url/--llm-model</code>, key via
+<code>$NOISE_INJECTOR_API_KEY</code>, temperature 0). Prompt: question + original answer + style task → rewrite. Disk cache
+keyed by sha256(model ‖ prompt) → identical re-renders; manifest records model name, never the key.</div></div>
+
+<h2>7 · Layer F — agent-harness faults</h2>
+<p><span class="tag F">F</span> The newest layer: attack the <b>interface</b>, not the model. A deployed driving
+stack is model + prompts + config; the prompts are code, the configs are contracts. Layer F corrupts
+<em>copies</em> of harness artifacts (originals untouched, nothing executed) — asking: how much of the "model's"
+resilience actually lives in the glue around it?</p>
+
+<div class="grid2">
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">prompt_truncation</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Pipeline/IO bugs that silently cut prompts — the tail of the instructions (usually the
+safety part) disappears first.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">keep first 90→30 % of file</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">prompt_section_delete</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Lossy merges / bad templating drop whole paragraphs — e.g. the "stop for school buses" rule.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Split on blank lines; delete 1–3 random paragraphs (never all).</div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">prompt_instruction_injection</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Supply-chain / prompt-injection: adversarial text appended to the system prompt
+("ignore earlier instructions…"). Simulates a poisoned prompt template.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Append 1–3 adversarial lines from a seeded pool after a blank line.</div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">prompt_garble</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Encoding corruption (bad byte handling, transmission) — content intact in length,
+destroyed in characters.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">∀ alnum char: replace with rand(a-z) at P = 2→20 %</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">prompt_format_break</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Strips structure (code fences, JSON braces, markdown headers) + drops periodic lines —
+breaks parsers downstream while the text "looks fine".</div>
+<div class="block algo"><div class="lbl">Algorithm</div>Remove markers ``` { } # ; drop every (s+1)-th line.</div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">vocab_drop / vocab_misspell / vocab_swap</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Detector-vocabulary faults: missing classes (pedestrian deleted → never detected),
+typo'd classes (open-vocabulary match silently fails), sibling swaps (car↔van). Each attacks open-vocabulary
+detection differently.</div>
+<div class="block algo"><div class="lbl">Algorithm</div>drop: remove 1–s classes/arm ; misspell: char-delete 1–s names ; swap: replace with sibling map.</div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">confidence_drift</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Threshold miscalibration — 0.25 → 0.4+ quietly raises the miss rate downstream.
+Tiny config edit, large behavioral consequence.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">conf' = min(0.99, conf + 0.05→0.4)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">max_tokens_starve</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Output-budget starvation: reasoning is truncated mid-thought — measures how plans degrade
+before the safe action is emitted.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">max_tokens ×= 0.5 → 0.03 (floor 16)</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">quality_drift</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Pre-processing regression — images downscaled (max_px 768→128) and over-compressed before
+the model ever sees them.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">max_px: 512→128 ; jpeg_quality: 60→10</div></div></div>
+
+<div class="fam"><div class="head"><span class="tag F">F</span><span class="name">temperature_drift</span></div>
+<div class="block phil"><div class="lbl">Philosophy</div>Sampling miscalibration — deterministic agents become stochastic; reproducibility
+of behavior erodes before accuracy does.</div>
+<div class="block algo"><div class="lbl">Algorithm</div><div class="f">temperature' = min(2.0, T + 0.2→1.0)</div></div></div>
+</div>
+
+<h2>8 · Spec-only layers (next rounds)</h2>
+<div class="note warnbox"><b>Layer D — systemic faults</b> (ISO 26262/21448 style): stuck-at streams, out-of-range
+values, processing latency (frame delayed by k timestamps), calibration drift, timestamp skew. Requires
+scenario streams with absolute timestamps — the Waymo (timestamped) adapter is the first carrier.</div>
+<div class="note warnbox"><b>Layer E — adversarial data corruption</b>: untargeted label noise (10–20 %), targeted
+safety-critical flips (1 % budget, planning/behavior only, flipped toward the majority class), clean-label
+poisoning (image↔annotation mismatch), backdoor triggers (patched frames → pinned unsafe answer), and eval-time
+PGD/patches. Specced in TAXONOMY.md §5; implementation with the fine-tuning round.</div>
+
+<h2>9 · Why determinism is a safety property here</h2>
+<div class="note"><b>Shared transient patterns.</b> Because every seed derives from
+<code>sha256(scenario ‖ recipe)</code>, all evaluated models — object detector and driving VLM alike — face the
+<i>identical</i> corrupted frames, in the identical order. Resilience differences are therefore attributable to the
+models, not to sampling luck. Manifests record every planted event so scoring can subtract known-injected errors
+from model errors — planted-error vs model-error separation is built into the output format.</div>
+
+<footer>noise-injector · deterministic fault injection for ADS scenario data · MIT · see also: docs/TAXONOMY.md, README.md</footer>
+</div></body></html>

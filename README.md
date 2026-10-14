@@ -37,6 +37,9 @@ Layer D (systemic faults: latency, stuck-at, out-of-range, timestamp skew) and L
 (adversarial: poisoning, backdoors, targeted label flips) are specified in
 [docs/TAXONOMY.md](docs/TAXONOMY.md) — implementation planned for the next round.
 
+**Deep-dive**: [docs/noise_types.html](docs/noise_types.html) — the philosophy and exact
+algorithm behind every noise family (open in a browser).
+
 ## Supported dataset adapters
 
 | Type | Layout |
