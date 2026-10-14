@@ -14,9 +14,11 @@ import yaml
 from .adapters.base import Adapter, Scenario
 from .corruptions.annotation import apply_annotation_op
 from .corruptions.image import IMAGE_CORRUPTIONS
+from .corruptions.llm_ops import apply_llm_op
 from .corruptions.qa import apply_qa_op
+from .llm import LLMBackend, LLMCache
 from .manifest import build_manifest, write_manifest
-from .spec import ALL_FAMILIES, HARNESS_OPS, IMAGE_FAMILIES, LAYER_OF, STRUCTURAL_FAMILIES, family
+from .spec import ALL_FAMILIES, HARNESS_OPS, IMAGE_FAMILIES, LAYER_OF, LLM_FAMILIES, STRUCTURAL_FAMILIES, family
 from .temporal import activation_mask, derive_seed
 
 
@@ -162,7 +164,36 @@ def _apply_qa_op(op, sc: Scenario, seed: int) -> dict:
     return {"family": fam, "layer": "C", "pattern": op["pattern"], "params": params, "targets": targets}
 
 
-def render_scenario(sc: Scenario, recipe: dict, out_dir: Path, seed: int, root: str = "") -> dict:
+def _apply_llm_op(op, sc: Scenario, seed: int, backend: LLMBackend, cache: LLMCache | None) -> dict:
+    fam = op["family"]
+    famdef = family(fam)
+    params = {**famdef.params(op["severity"]), **op["params_override"]}
+    rng = np.random.default_rng(derive_seed(seed, fam, "llm"))
+    mask = activation_mask(op["pattern"], len(sc.frames), rng, op["severity"])
+    layer = LLM_FAMILIES[fam].layer
+    targets = []
+    for i, fr in enumerate(sc.frames):
+        if not mask["frames"][i]:
+            continue
+        if fam == "llm_qa_rewrite" and fr.qa:
+            detail = apply_llm_op(fam, fr.qa, params, rng, backend, cache)
+        elif fam == "llm_description_drift" and fr.key_object_infos:
+            detail = apply_llm_op(fam, fr.key_object_infos, params, rng, backend, cache)
+        else:
+            continue
+        if detail:
+            targets.append({"frame_id": fr.frame_id, "detail": detail})
+    return {
+        "family": fam,
+        "layer": layer,
+        "pattern": op["pattern"],
+        "params": params,
+        "backend": f"{backend.model}" if backend else None,
+        "targets": targets,
+    }
+
+
+def render_scenario(sc: Scenario, recipe: dict, out_dir: Path, seed: int, root: str = "", backend: LLMBackend | None = None, cache: LLMCache | None = None) -> dict:
     out_dir = Path(out_dir)
     images_dir = out_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -177,6 +208,8 @@ def render_scenario(sc: Scenario, recipe: dict, out_dir: Path, seed: int, root: 
             events.append(_apply_image_op(op, sc, seed))
         elif fam in IMAGE_FAMILIES:
             events.append(_apply_image_op(op, sc, seed))
+        elif fam in LLM_FAMILIES:
+            events.append(_apply_llm_op(op, sc, seed, backend, cache))
         elif LAYER_OF[fam] == "B":
             events.append(_apply_annotation_op(op, sc, seed))
         elif LAYER_OF[fam] == "C":

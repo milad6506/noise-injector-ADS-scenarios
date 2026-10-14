@@ -29,8 +29,8 @@ offspring scenarios ──► images/ + annotations.json + manifest.json
 | Layer | Target | Families |
 |---|---|---|
 | **A** | camera images | fog, rain, snow, water_splash, low_light, overexposure, glare, bloom, motion_blur, defocus, rolling_shutter, awgn, salt_pepper, dead_pixels, banding, chromatic_aberration, lens_droplets, lens_dirt, color_cast, quantization, jpeg + structural: frame_freeze, camera_dropout, camera_desync |
-| **B** | annotations (`key_object_infos`) | missed_detections, phantom_objects, bbox_jitter, class_confusion, status_flip, max_det_truncation |
-| **C** | QA graph data | qa_wrong_answer, qa_answer_drift, qa_category_misassign, qa_drop, qa_duplicate, qa_crossref_break |
+| **B** | annotations (`key_object_infos`) | missed_detections, phantom_objects, bbox_jitter, class_confusion, status_flip, max_det_truncation, llm_description_drift |
+| **C** | QA graph data | qa_wrong_answer, qa_answer_drift, qa_category_misassign, qa_drop, qa_duplicate, qa_crossref_break, llm_qa_rewrite |
 | **F** | agent-harness artifacts (prompts, config.json) — never executes models | prompt_truncation, prompt_section_delete, prompt_instruction_injection, prompt_garble, prompt_format_break, vocab_drop, vocab_misspell, vocab_swap, confidence_drift, max_tokens_starve, quality_drift, temperature_drift |
 
 Layer D (systemic faults: latency, stuck-at, out-of-range, timestamp skew) and Layer E
@@ -109,6 +109,37 @@ ops:
 ```
 
 Harness ops support a `targets:` list to scope which files are affected.
+
+## LLM backend (bring your own API)
+
+Layer B/C corruptions can be executed by **an LLM you connect at run time** — any
+OpenAI-compatible endpoint (OpenAI, OpenRouter, Together, vLLM, ollama, …):
+
+```bash
+# cloud endpoint — key read from env var, never passed on the CLI, never stored
+export NOISE_INJECTOR_API_KEY=sk-...
+noise-injector inject --type nuscenes --root /path/to/DriveLM \
+  --family llm_qa_rewrite --severities 3 \
+  --llm-base-url https://api.openai.com/v1 --llm-model gpt-4o-mini --out offspring/
+
+# local ollama — no key needed
+noise-injector inject --type nuscenes --root /path/to/DriveLM \
+  --family llm_qa_rewrite --severities 3 \
+  --llm-base-url http://127.0.0.1:11434/v1 --llm-model llama3.2:3b --out offspring/
+```
+
+LLM ops available: `llm_qa_rewrite` (styles: `plausible_wrong`, `vague`, `hallucinated` —
+set via op `params`), `llm_description_drift`. Responses are cached on disk
+(`.llm_cache.json`, gitignored) so re-renders stay deterministic; the manifest records the
+backend model name but never the key.
+
+## Privacy / secrets policy
+
+- API keys only ever come from **environment variables** — the tool never accepts, logs, or
+  stores a key argument; `.env` files are gitignored
+- Manifests **redact dataset root paths by default** (`<dataset-root>`)
+- The report generator scrubs path-like strings from rendered output
+- Test suite runs fully offline (fake LLM stub; synthetic fixtures)
 
 ## Tests
 

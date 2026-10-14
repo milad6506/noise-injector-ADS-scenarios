@@ -174,11 +174,23 @@ QA_FAMILIES = {
     ),
 }
 
+LLM_FAMILIES = {
+    "llm_qa_rewrite": Family(
+        "llm_qa_rewrite", "C", "LLM-rewritten wrong answers (bring-your-own backend).",
+        "persistent", lambda s: {"rate": [0.02, 0.05, 0.1, 0.18, 0.3][s - 1], "style": "plausible_wrong"},
+    ),
+    "llm_description_drift": Family(
+        "llm_description_drift", "B", "LLM-rewritten object descriptions with one wrong attribute.",
+        "persistent", lambda s: {"rate": [0.02, 0.05, 0.1, 0.18, 0.3][s - 1]},
+    ),
+}
+
 ALL_FAMILIES: dict[str, Family] = {}
 ALL_FAMILIES.update(IMAGE_FAMILIES)
 ALL_FAMILIES.update(STRUCTURAL_FAMILIES)
 ALL_FAMILIES.update(ANNOTATION_FAMILIES)
 ALL_FAMILIES.update(QA_FAMILIES)
+ALL_FAMILIES.update(LLM_FAMILIES)
 
 LAYER_OF = {n: f.layer for n, f in ALL_FAMILIES.items()}
 

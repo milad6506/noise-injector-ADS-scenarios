@@ -16,6 +16,7 @@ from .adapters.base import get_adapter
 from .corruptions.image import IMAGE_CORRUPTIONS
 from .harness import render_harness
 from .render import load_recipe, make_recipe, render_scenario, select_scenarios
+from .report import write_report
 from .spec import ALL_FAMILIES, HARNESS_OPS, SEVERITY_MAX, list_families
 from .temporal import derive_seed
 
@@ -42,6 +43,18 @@ def cmd_inject(args) -> int:
         print("error: provide --recipe FILE or --family NAME", file=sys.stderr)
         return 2
 
+    backend = cache = None
+    needs_llm = any(op["family"].startswith("llm_") for r in recipes for op in r["ops"])
+    if needs_llm:
+        from .llm import make_backend
+
+        out_root = Path(args.out)
+        backend, cache = make_backend(
+            args.llm_base_url, args.llm_model, args.llm_api_key_env,
+            cache_path=(out_root / ".llm_cache.json") if not args.no_llm_cache else None,
+        )
+        print(f"LLM backend: {args.llm_model} @ {args.llm_base_url} (key from ${args.llm_api_key_env})")
+
     scenario_sel = args.scenarios or "1"
     ids = select_scenarios(adapter, scenario_sel)
     out_root = Path(args.out)
@@ -53,7 +66,7 @@ def cmd_inject(args) -> int:
         for recipe in recipes:
             seed = derive_seed(args.seed, sid, recipe["name"])
             dest = out_root / adapter.name / sid / recipe["name"]
-            render_scenario(sc, recipe, dest, seed, root=str(adapter.root))
+            render_scenario(sc, recipe, dest, seed, root=str(adapter.root), backend=backend, cache=cache)
             n_offspring += 1
             print(f"rendered: {dest}")
     print(f"done: {n_offspring} offspring scenario(s) -> {out_root}")
@@ -130,6 +143,12 @@ def _label_tile(img: np.ndarray, label: str) -> np.ndarray:
     return np.asarray(pil)
 
 
+def cmd_report(args) -> int:
+    path = write_report(args.offspring, args.out, args.previews)
+    print(f"report -> {path}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="noise-injector", description="Deterministic noise/error injection for ADS scenario datasets and agent harnesses.")
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -145,10 +164,14 @@ def build_parser() -> argparse.ArgumentParser:
     pi.add_argument("--out", required=True, help="offspring output root")
     pi.add_argument("--seed", type=int, default=42)
     pi.add_argument("--max-frames", type=int, default=60, help="cap frames per scenario (waymo adapter)")
+    pi.add_argument("--llm-base-url", default=None, help="OpenAI-compatible endpoint for LLM ops (e.g. https://api.openai.com/v1)")
+    pi.add_argument("--llm-model", default=None, help="model name for LLM ops")
+    pi.add_argument("--llm-api-key-env", default="NOISE_INJECTOR_API_KEY", help="env var holding the API key (never pass the key itself)")
+    pi.add_argument("--no-llm-cache", action="store_true", help="disable LLM response caching")
     pi.set_defaults(fn=cmd_inject)
 
     ph = sub.add_parser("harness", help="corrupt an agent harness copy (prompts/config)")
-    ph.add_argument("--root", required=True, help="harness directory (e.g. judge_agent2/)")
+    ph.add_argument("--root", required=True, help="harness directory (agent code + prompts + config)")
     ph.add_argument("--recipe", help="recipe YAML path")
     ph.add_argument("--op", help=f"harness op (one of: {', '.join(sorted(HARNESS_OPS))})")
     ph.add_argument("--strength", type=int, default=3)
@@ -169,6 +192,12 @@ def build_parser() -> argparse.ArgumentParser:
     pv.add_argument("--seed", type=int, default=42)
     pv.add_argument("--max-frames", type=int, default=60)
     pv.set_defaults(fn=cmd_preview)
+
+    pr = sub.add_parser("report", help="build a self-contained HTML report from an offspring tree")
+    pr.add_argument("--offspring", required=True, help="offspring root to scan for manifests")
+    pr.add_argument("--out", required=True, help="output HTML path")
+    pr.add_argument("--previews", default=None, help="directory of preview PNGs to embed")
+    pr.set_defaults(fn=cmd_report)
     return p
 
 

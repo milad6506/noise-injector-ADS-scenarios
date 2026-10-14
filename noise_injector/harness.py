@@ -111,7 +111,7 @@ def render_harness(root: Path, recipe: dict, out_dir: Path, seed: int) -> dict:
             raise KeyError(f"unknown harness op: {op_name}")
 
     manifest = build_manifest(
-        str(root), "harness", str(root), {"name": recipe.get("name", "harness"), "ops": recipe["ops"]},
+        root.name, "harness", str(root), {"name": recipe.get("name", "harness"), "ops": recipe["ops"]},
         seed, events, copied + ["manifest.json"],
     )
     write_manifest(out_dir / "manifest.json", manifest)

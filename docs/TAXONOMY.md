@@ -71,6 +71,7 @@ Error placement is structured, not uniform: confusions follow semantic sets
 | B-04 | class_confusion | persistent | 2→30% |
 | B-05 | status_flip | persistent | 2→30% (Moving↔Stationary) |
 | B-06 | max_det_truncation | persistent | cap 10→2 objects/frame |
+| B-07 | llm_description_drift | persistent | 2→30%, LLM-rewritten with one wrong attribute (bring-your-own backend) |
 
 Signal-state flip (traffic-light color, flasher on/off) is the highest-value B-mode for
 expectation-based evaluation (≈40 of the 205 requirement families hinge on light/signal state
@@ -86,6 +87,11 @@ reading) — specialized in a later round on datasets carrying signal states.
 | C-04 | qa_drop | persistent | 2→30% |
 | C-05 | qa_duplicate | persistent | 2→25% |
 | C-06 | qa_crossref_break | persistent | 2→30% (`<c#>` refs point wrong) |
+| C-07 | llm_qa_rewrite | persistent | 2→30%, LLM-rewritten answers — styles: plausible_wrong / vague / hallucinated (bring-your-own backend) |
+
+LLM-powered modes (B-07, C-07) execute through a pluggable OpenAI-compatible backend supplied
+at run time (`--llm-base-url` / `--llm-model`, key via env var). Disk-cached responses keep
+re-renders deterministic.
 
 Three error regimes drive rate presets:
 

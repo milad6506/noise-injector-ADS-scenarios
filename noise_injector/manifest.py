@@ -8,6 +8,11 @@ from pathlib import Path
 from . import __version__
 
 
+def redact_path(path: str) -> str:
+    """Replace the dataset root with a placeholder — manifests stay shareable."""
+    return "<dataset-root>" if path else path
+
+
 def build_manifest(
     scenario_id: str,
     adapter_name: str,
@@ -24,7 +29,7 @@ def build_manifest(
         "parent": {
             "scenario_id": scenario_id,
             "adapter": adapter_name,
-            "root": str(root),
+            "root": redact_path(root),
         },
         "recipe": recipe_dict,
         "master_seed": master_seed,
