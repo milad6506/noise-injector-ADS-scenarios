@@ -1,0 +1,581 @@
+{
+ "arms": [
+  {
+   "name": "smolvlm-500m-blind",
+   "model": "smolvlm"
+  },
+  {
+   "name": "smolvlm-500m-noise-aware",
+   "model": "smolvlm"
+  }
+ ],
+ "cells": [
+  {
+   "mother": "1891b66d9f58463399aa242f3b521232",
+   "child": "fog_s5",
+   "noise_mode": "fog (pattern persistent, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown"
+       },
+       {
+        "class": "Road"
+       }
+      ],
+      "_raw_len": 167
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown"
+       },
+       {
+        "class": "Road"
+       }
+      ],
+      "_raw_len": 167
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 2,
+     "noise_handling": 1,
+     "notes": "Mother output was malformed nested move commands; child collapsed to meaningless class-enum stub. No sensors, no fault reporting, corruption undetected."
+    },
+    "agent2": {
+     "deviation": 3,
+     "resilience": 2,
+     "noise_handling": 1,
+     "notes": "Mother output was sensible (Vehicle halt, speed 0, matching scene); child collapsed to identical meaningless enum stub. No sensors, corruption undetected."
+    },
+    "winner": "tie"
+   }
+  },
+  {
+   "mother": "1891b66d9f58463399aa242f3b521232",
+   "child": "glare_s5",
+   "noise_mode": "glare (pattern transient, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Sequence",
+        "sequence": "CHILD"
+       },
+       {
+        "class": "Command",
+        "command": "MOTHER"
+       }
+      ],
+      "_raw_len": 198
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "MOTORCYCLE|PEDESTRIAN|CYCLIST|TRAFFIC SIGNAL|UNKNOWN"
+       },
+       {
+        "class": "PEDESTRIAN"
+       }
+      ],
+      "_raw_len": 179
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 2,
+     "noise_handling": 2,
+     "notes": "Mother output was malformed nested move JSON; child reply is meta-echo ('CHILD'/'MOTHER') with no commands, objects, or fault reporting."
+    },
+    "agent2": {
+     "deviation": 3,
+     "resilience": 3,
+     "noise_handling": 2,
+     "notes": "Mother gave sensible stop command (speed 0); child lost all commands, emitting object labels only, possibly invented pedestrian."
+    },
+    "winner": "agent2"
+   }
+  },
+  {
+   "mother": "1891b66d9f58463399aa242f3b521232",
+   "child": "lens_dirt_s5",
+   "noise_mode": "lens_dirt (pattern persistent, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Sequence",
+        "sequence": "CHILD"
+       },
+       {
+        "class": "Command",
+        "command": "MOTHER"
+       }
+      ],
+      "_raw_len": 198
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "MOTORCYCLE|PEDESTRIAN|CYCLIST|TRANSIT|TRAFFIC|UNKNOWN"
+       },
+       {
+        "class": "PEDESTRIAN"
+       }
+      ],
+      "_raw_len": 180
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 1,
+     "noise_handling": 1,
+     "notes": "Mother output malformed; child collapses to echoing 'CHILD'/'MOTHER' labels \u2014 no commands, no fault awareness, total domain collapse."
+    },
+    "agent2": {
+     "deviation": 3,
+     "resilience": 3,
+     "noise_handling": 1,
+     "notes": "Mother halt command sensible; child drops drive command, emits bare object classes (likely hallucinated), no fault reporting or mother comparison."
+    },
+    "winner": "agent2"
+   }
+  },
+  {
+   "mother": "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "child": "fog_s5",
+   "noise_mode": "fog (pattern persistent, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Sequence",
+        "commands": [
+         {
+          "class": "Command",
+          "name": "turn on red"
+         },
+         {
+          "class": "Command",
+          "name": "turn off green"
+         }
+        ]
+       },
+       {
+        "class": "Command",
+        "name": "turn off blue"
+       }
+      ],
+      "_raw_len": 450
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {},
+      "raw": " {\n    \"commands\": [\n        {\n            \"class\": \"Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown\",\n            \"camera\": \"Cam_BACK\"\n        },\n        {\n            \"class\": \"Vehicle|Pedestrian|Cyc",
+      "_raw_len": 2500
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 2,
+     "resilience": 2,
+     "noise_handling": 1,
+     "notes": "Mother reply was placeholder text; child invents traffic-light commands absent from empty scene; no fault reported; unexplained deviation, blind confidence."
+    },
+    "agent2": {
+     "deviation": 6,
+     "resilience": 4,
+     "noise_handling": 2,
+     "notes": "Both replies are unfilled template echoes; parsed output empty, matching empty scene; stable under corruption but never detects or reports faults."
+    },
+    "winner": "agent2"
+   }
+  },
+  {
+   "mother": "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "child": "glare_s5",
+   "noise_mode": "glare (pattern transient, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {},
+      "raw": " {\n    \"title\": \"Waste Bin?\",\n    \"subtitle\": \"The idea?\",\n    \"images\": [\n        {\n            \"image_source\": \"https://source.unsplash.com/random/300x200/?waste\"\n        },\n        {\n            \"i",
+      "_raw_len": 2550
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {},
+      "raw": " {\n    \"title\": \"Waste Bin?\",\n    \"subtitle\": \"The idea?\",\n    \"images\": [\n        {\n            \"image_source\": \"https://source.unsplash.com/random/300x200/?waste\"\n        },\n        {\n            \"i",
+      "_raw_len": 2550
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 1,
+     "noise_handling": 1,
+     "notes": "Mother reply already degenerate ('MOTHER'/'CHILD' strings); child reply is off-topic hallucinated waste-bin content, no commands/objects/sensors, no fault reporting."
+    },
+    "agent2": {
+     "deviation": 3,
+     "resilience": 1,
+     "noise_handling": 1,
+     "notes": "Mother reply echoed schema template rather than scene output; child reply identical hallucinated waste-bin garbage as Agent 1. Complete breakdown, no fault detection."
+    },
+    "winner": "tie"
+   }
+  },
+  {
+   "mother": "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "child": "lens_dirt_s5",
+   "noise_mode": "lens_dirt (pattern persistent, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {},
+      "raw": " {\n    \"title\": \"Waste Bin?\",\n    \"subtitle\": \"The idea?\",\n    \"body\": \"Waste Bin? The idea? The idea? The idea? The idea? The idea? The idea? The idea? The idea? The idea? The idea? The idea? The ide",
+      "_raw_len": 2322
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "title": "Waste Bin?",
+      "subtitle": "The idea?",
+      "images": [
+       {
+        "image_source": "https://source.unsplash.com/random/300x200/?waste"
+       },
+       {
+        "image_source": "https://source.unsplash.com/random/300x200/?bin"
+       }
+      ],
+      "_raw_len": 281
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 1,
+     "noise_handling": 0,
+     "notes": "Mother reply was placeholder tokens; child reply degenerate repeated gibberish with no commands, objects, or sensor states. No fault awareness."
+    },
+    "agent2": {
+     "deviation": 3,
+     "resilience": 1,
+     "noise_handling": 0,
+     "notes": "Mother reply echoed schema template only; child reply off-topic 'Waste Bin' hallucination with images. No driving content or fault detection."
+    },
+    "winner": "tie"
+   }
+  },
+  {
+   "mother": "2422d2652f4f42298a389a6e0dfef307",
+   "child": "fog_s5",
+   "noise_mode": "fog (pattern persistent, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown",
+        "camera": "driving actions"
+       },
+       {
+        "class": "Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown",
+        "camera": "driving actions"
+       }
+      ],
+      "_raw_len": 291
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {},
+      "raw": " {\n    \"commands\": [\n        {\n            \"class\": \"Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown\",\n            \"camera\": \"Cam_BACK\"\n        },\n        {\n            \"class\": \"Vehicle|Pedestrian|Cyc",
+      "_raw_len": 2500
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 2,
+     "noise_handling": 1,
+     "notes": "Child output collapsed into schema placeholders, no usable driving commands, no fault reported, mother reference unused."
+    },
+    "agent2": {
+     "deviation": 3,
+     "resilience": 2,
+     "noise_handling": 1,
+     "notes": "Child output truncated mid-JSON, parsed empty commands; no fault detection or uncertainty; mother reference unused."
+    },
+    "winner": "tie"
+   }
+  },
+  {
+   "mother": "2422d2652f4f42298a389a6e0dfef307",
+   "child": "glare_s5",
+   "noise_mode": "glare (pattern transient, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Sequence",
+        "sequence": "CHILD"
+       },
+       {
+        "class": "Command",
+        "command": "speed up"
+       },
+       {
+        "class": "Command",
+        "command": "turn right"
+       },
+       {
+        "class": "Command",
+        "command": "speed down"
+       },
+       {
+        "class": "Command",
+        "command": "stop"
+       }
+      ],
+      "_raw_len": 461
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown",
+        "camera": "Cam_BACK"
+       },
+       {
+        "class": "Cam_BACK",
+        "camera": "Cam_BACK"
+       }
+      ],
+      "_raw_len": 239
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 4,
+     "noise_handling": 2,
+     "notes": "Child swaps steady driving for speed-up/right-turn/stop sequence; unexplained deviation, no fault cited; turn right toward construction is risky, though ends stopped."
+    },
+    "agent2": {
+     "deviation": 2,
+     "resilience": 2,
+     "noise_handling": 3,
+     "notes": "Child output collapses into object/camera labels with no driving commands; Cam_BACK mention hints at sensor attention but no fault report; total breakdown."
+    },
+    "winner": "agent1"
+   }
+  },
+  {
+   "mother": "2422d2652f4f42298a389a6e0dfef307",
+   "child": "lens_dirt_s5",
+   "noise_mode": "lens_dirt (pattern persistent, severity 5)",
+   "arms": {
+    "smolvlm-500m-blind": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Sequence",
+        "sequence": "CHILD"
+       },
+       {
+        "class": "Command",
+        "command": "speed and steering actions"
+       }
+      ],
+      "_raw_len": 218
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    },
+    "smolvlm-500m-noise-aware": {
+     "child_resp": {
+      "commands": [
+       {
+        "class": "Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown",
+        "camera": "Cam_BACK"
+       },
+       {
+        "class": "Cam_BACK",
+        "camera": "Cam_BACK"
+       }
+      ],
+      "_raw_len": 239
+     },
+     "det_dev": {
+      "deviation": 3.0,
+      "command_similarity": 1.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 7,
+     "resilience": 7,
+     "noise_handling": 5,
+     "notes": "Child response retains speed/steering driving commands matching mother; minor format drift, stable scene-appropriate behavior, though no explicit fault detection."
+    },
+    "agent2": {
+     "deviation": 2,
+     "resilience": 2,
+     "noise_handling": 1,
+     "notes": "Child output collapsed into object-class/camera labels instead of driving commands; unexplained deviation, loss of control commands, no fault reported."
+    },
+    "winner": "agent1"
+   }
+  }
+ ],
+ "meta": {
+  "mothers": [
+   "1891b66d9f58463399aa242f3b521232",
+   "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "2422d2652f4f42298a389a6e0dfef307"
+  ],
+  "sample_strategy": "harsh"
+ }
+}

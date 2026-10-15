@@ -1,0 +1,977 @@
+{
+ "arms": [
+  {
+   "key": "A",
+   "name": "qwen8b-blind",
+   "prompt_file": "prompts/blind_prompt.txt",
+   "desc": "minimal driver prompt, no noise awareness"
+  },
+  {
+   "key": "B",
+   "name": "qwen8b-noise-aware",
+   "prompt_file": "prompts/noise_aware_prompt.txt",
+   "desc": "same prompt + awareness that the input line may carry noise/faults"
+  }
+ ],
+ "vlm": {
+  "base_url": "https://openrouter.ai/api/v1",
+  "model": "qwen/qwen3-vl-8b-instruct",
+  "api_key_env": "OPENROUTER_API_KEY"
+ },
+ "judge": {
+  "base_url": "https://openrouter.ai/api/v1",
+  "model": "z-ai/glm-5.3-flash",
+  "api_key_env": "OPENROUTER_API_KEY"
+ },
+ "cells": [
+  {
+   "mother": "1891b66d9f58463399aa242f3b521232",
+   "child": "fog_s5",
+   "noise_mode": "fog (pattern persistent, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {
+       "front": "degraded",
+       "front_left": "degraded",
+       "front_right": "degraded",
+       "back": "degraded",
+       "back_left": "degraded",
+       "back_right": "degraded"
+      },
+      "_raw_len": 225
+     },
+     "det_dev": {
+      "deviation": 10.0,
+      "command_similarity": 0.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 0.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "maintain speed",
+       "steer straight"
+      ],
+      "objects": [],
+      "sensors": {
+       "front": "degraded",
+       "front_left": "degraded",
+       "front_right": "degraded",
+       "back": "degraded",
+       "back_left": "degraded",
+       "back_right": "degraded"
+      },
+      "_raw_len": 259
+     },
+     "det_dev": {
+      "deviation": 8.33,
+      "command_similarity": 0.333,
+      "object_similarity": 0.0,
+      "sensor_agreement": 0.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 3,
+     "noise_handling": 4,
+     "notes": "Detects degradation but collapses: no commands, no objects. Paralyzed fallback; sensor flagging correct yet output unusable."
+    },
+    "agent2": {
+     "deviation": 6,
+     "resilience": 8,
+     "noise_handling": 8,
+     "notes": "Flags degraded sensors, drops objects consistently, shifts accelerate to maintain speed\u2014conservative, safe, not paralyzed."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "1891b66d9f58463399aa242f3b521232",
+   "child": "glare_s5",
+   "noise_mode": "glare (pattern transient, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_LEFT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_RIGHT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK_LEFT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK_RIGHT"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_FRONT_LEFT"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 572
+     },
+     "det_dev": {
+      "deviation": 5.86,
+      "command_similarity": 0.0,
+      "object_similarity": 0.714,
+      "sensor_agreement": 1.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "front"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_right"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_right"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 519
+     },
+     "det_dev": {
+      "deviation": 3.33,
+      "command_similarity": 0.333,
+      "object_similarity": 1.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 4,
+     "resilience": 4,
+     "noise_handling": 3,
+     "notes": "Commands flipped (steer_right\u2192straight), invented front-right vehicle, pedestrian jumped back-left\u2192front-left; sensors all 'ok', no fault explanation \u2014 unstable."
+    },
+    "agent2": {
+     "deviation": 8,
+     "resilience": 6,
+     "noise_handling": 5,
+     "notes": "Near-identical child output, objects fully stable, only softened acceleration. No hallucinations, but no explicit fault detection; accelerating toward halt intersection."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "1891b66d9f58463399aa242f3b521232",
+   "child": "lens_dirt_s5",
+   "noise_mode": "lens_dirt (pattern persistent, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [
+       "accelerate to 20 mph",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_LEFT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_RIGHT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK_LEFT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK_RIGHT"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_FRONT_LEFT"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 573
+     },
+     "det_dev": {
+      "deviation": 5.86,
+      "command_similarity": 0.0,
+      "object_similarity": 0.714,
+      "sensor_agreement": 1.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "front"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_right"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_right"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 519
+     },
+     "det_dev": {
+      "deviation": 3.33,
+      "command_similarity": 0.333,
+      "object_similarity": 1.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 4,
+     "resilience": 4,
+     "noise_handling": 3,
+     "notes": "Large unexplained drift: steering flipped right\u2192straight, pedestrian moved back-left\u2192front-left, new vehicle appeared; no fault reported, all sensors 'ok'."
+    },
+    "agent2": {
+     "deviation": 8,
+     "resilience": 7,
+     "noise_handling": 5,
+     "notes": "Nearly identical child response; only throttle softened ('accelerate slightly')\u2014mildly cautious, objects and sensors fully consistent; no explicit fault detection shown."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "child": "fog_s5",
+   "noise_mode": "fog (pattern persistent, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {
+       "front": "degraded",
+       "front_left": "degraded",
+       "front_right": "degraded",
+       "back": "degraded",
+       "back_left": "degraded",
+       "back_right": "degraded"
+      },
+      "_raw_len": 225
+     },
+     "det_dev": {
+      "deviation": 10.0,
+      "command_similarity": 0.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 0.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {
+       "front": "degraded",
+       "front_left": "degraded",
+       "front_right": "degraded",
+       "back": "degraded",
+       "back_left": "degraded",
+       "back_right": "degraded"
+      },
+      "_raw_len": 225
+     },
+     "det_dev": {
+      "deviation": 10.0,
+      "command_similarity": 0.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 0.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 5,
+     "resilience": 6,
+     "noise_handling": 6,
+     "notes": "Child drops all commands/objects, flags every sensor degraded. Fully explained by apparent fault, but response is total collapse, not graded degradation."
+    },
+    "agent2": {
+     "deviation": 5,
+     "resilience": 6,
+     "noise_handling": 6,
+     "notes": "Identical child fallback: all sensors degraded, no commands. Safe and fault-aware, but paralyzed; no explicit mother-reference comparison shown."
+    },
+    "winner": "tie"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "child": "glare_s5",
+   "noise_mode": "glare (pattern transient, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [
+       "maintain speed",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_LEFT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_FRONT_LEFT"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_BACK_LEFT"
+       },
+       {
+        "class": "Cyclist",
+        "camera": "CAM_BACK_LEFT"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 594
+     },
+     "det_dev": {
+      "deviation": 4.19,
+      "command_similarity": 0.333,
+      "object_similarity": 0.714,
+      "sensor_agreement": 1.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "slow down",
+       "stop"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "front"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "front"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "front_left"
+       },
+       {
+        "class": "TrafficSign",
+        "camera": "back_right"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 504
+     },
+     "det_dev": {
+      "deviation": 0.0,
+      "command_similarity": 1.0,
+      "object_similarity": 1.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 4,
+     "resilience": 5,
+     "noise_handling": 2,
+     "notes": "Command shifted accelerate\u2192maintain; phantom back-left pedestrian/cyclist appeared, sign vanished; sensors all 'ok', no fault flagged\u2014unexplained drift."
+    },
+    "agent2": {
+     "deviation": 9,
+     "resilience": 9,
+     "noise_handling": 6,
+     "notes": "Child response identical to mother (only camera-name formatting); stable, safe slow/stop behavior; no phantom objects; no explicit fault detection though."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "child": "lens_dirt_s5",
+   "noise_mode": "lens_dirt (pattern persistent, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_LEFT"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_FRONT_LEFT"
+       },
+       {
+        "class": "Cyclist",
+        "camera": "CAM_BACK_LEFT"
+       },
+       {
+        "class": "TrafficSign",
+        "camera": "CAM_BACK_RIGHT"
+       },
+       {
+        "class": "Unknown",
+        "camera": "CAM_FRONT_RIGHT"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 734
+     },
+     "det_dev": {
+      "deviation": 4.19,
+      "command_similarity": 0.333,
+      "object_similarity": 0.714,
+      "sensor_agreement": 1.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "slow down",
+       "stop"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "front"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "front"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "front_left"
+       },
+       {
+        "class": "TrafficSign",
+        "camera": "back_right"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 504
+     },
+     "det_dev": {
+      "deviation": 0.0,
+      "command_similarity": 1.0,
+      "object_similarity": 1.0,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 4,
+     "resilience": 4,
+     "noise_handling": 2,
+     "notes": "Noise leaked through: back vehicle vanished, cyclist and unknown object invented, command softened with no reported fault; sensors all 'ok' despite perceptual shifts."
+    },
+    "agent2": {
+     "deviation": 9,
+     "resilience": 9,
+     "noise_handling": 6,
+     "notes": "Child response essentially identical to mother; safe stop commands fit parked scene; stable objects; no explicit corruption detection but fully noise-robust."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "2422d2652f4f42298a389a6e0dfef307",
+   "child": "fog_s5",
+   "noise_mode": "fog (pattern persistent, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [],
+      "objects": [],
+      "sensors": {
+       "front": "degraded",
+       "front_left": "degraded",
+       "front_right": "degraded",
+       "back": "degraded",
+       "back_left": "degraded",
+       "back_right": "degraded"
+      },
+      "_raw_len": 225
+     },
+     "det_dev": {
+      "deviation": 10.0,
+      "command_similarity": 0.0,
+      "object_similarity": 0.0,
+      "sensor_agreement": 0.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "maintain current speed",
+       "steer straight"
+      ],
+      "objects": [],
+      "sensors": {
+       "front": "degraded",
+       "front_left": "degraded",
+       "front_right": "degraded",
+       "back": "degraded",
+       "back_left": "degraded",
+       "back_right": "degraded"
+      },
+      "_raw_len": 267
+     },
+     "det_dev": {
+      "deviation": 8.33,
+      "command_similarity": 0.333,
+      "object_similarity": 0.0,
+      "sensor_agreement": 0.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 3,
+     "resilience": 3,
+     "noise_handling": 5,
+     "notes": "Correctly flagged all cameras degraded, but collapsed: dropped every command and object, producing an empty, paralyzed output with no fallback behavior."
+    },
+    "agent2": {
+     "deviation": 6,
+     "resilience": 7,
+     "noise_handling": 8,
+     "notes": "Flagged degradation, retained steering command, conservatively switched to maintaining speed; object loss explained by fault; functional, non-paralyzed adaptation."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "2422d2652f4f42298a389a6e0dfef307",
+   "child": "glare_s5",
+   "noise_mode": "glare (pattern transient, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_RIGHT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_BACK_LEFT"
+       },
+       {
+        "class": "Cyclist",
+        "camera": "CAM_FRONT_LEFT"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 492
+     },
+     "det_dev": {
+      "deviation": 6.12,
+      "command_similarity": 0.0,
+      "object_similarity": 0.625,
+      "sensor_agreement": 1.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "front"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_right"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_right"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "degraded",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 525
+     },
+     "det_dev": {
+      "deviation": 1.19,
+      "command_similarity": 1.0,
+      "object_similarity": 0.714,
+      "sensor_agreement": 0.833
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 4,
+     "resilience": 4,
+     "noise_handling": 2,
+     "notes": "Commands changed (steer_right\u2192straight) and three objects vanished with no fault reported; sensors all 'ok' despite losses \u2014 unexplained drift and blind confidence."
+    },
+    "agent2": {
+     "deviation": 8,
+     "resilience": 8,
+     "noise_handling": 7,
+     "notes": "Commands identical to mother; correctly flagged front_left degradation, explaining object changes; stable, conservative behavior with explicit fault reporting."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  },
+  {
+   "mother": "2422d2652f4f42298a389a6e0dfef307",
+   "child": "lens_dirt_s5",
+   "noise_mode": "lens_dirt (pattern persistent, severity 5)",
+   "arms": {
+    "A": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_FRONT_RIGHT"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "CAM_BACK"
+       },
+       {
+        "class": "Pedestrian",
+        "camera": "CAM_BACK_LEFT"
+       },
+       {
+        "class": "Cyclist",
+        "camera": "CAM_FRONT_LEFT"
+       },
+       {
+        "class": "TrafficSign",
+        "camera": "CAM_FRONT_RIGHT"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 551
+     },
+     "det_dev": {
+      "deviation": 5.75,
+      "command_similarity": 0.0,
+      "object_similarity": 0.75,
+      "sensor_agreement": 1.0
+     }
+    },
+    "B": {
+     "child_resp": {
+      "commands": [
+       "accelerate slightly",
+       "steer straight"
+      ],
+      "objects": [
+       {
+        "class": "Vehicle",
+        "camera": "front"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "front_right"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_left"
+       },
+       {
+        "class": "Vehicle",
+        "camera": "back_right"
+       }
+      ],
+      "sensors": {
+       "front": "ok",
+       "front_left": "ok",
+       "front_right": "ok",
+       "back": "ok",
+       "back_left": "ok",
+       "back_right": "ok"
+      },
+      "_raw_len": 519
+     },
+     "det_dev": {
+      "deviation": 0.86,
+      "command_similarity": 1.0,
+      "object_similarity": 0.714,
+      "sensor_agreement": 1.0
+     }
+    }
+   },
+   "judge": {
+    "agent1": {
+     "deviation": 4,
+     "resilience": 5,
+     "noise_handling": 2,
+     "notes": "Commands flipped and two rear vehicles vanished with all sensors 'ok' \u2014 unexplained drift, no fault flagged."
+    },
+    "agent2": {
+     "deviation": 8,
+     "resilience": 7,
+     "noise_handling": 4,
+     "notes": "Commands identical to mother; minor object shuffle despite sensors 'ok'; stable but no explicit corruption detection."
+    },
+    "winner": "agent2"
+   },
+   "judge_usage_ok": true
+  }
+ ],
+ "meta": {
+  "run_dir": "runs/full10",
+  "max_frames": 2,
+  "mothers": [
+   "1891b66d9f58463399aa242f3b521232",
+   "1977a1c98a6c4eb79fbc2a6dc0da9b0f",
+   "2422d2652f4f42298a389a6e0dfef307"
+  ],
+  "per_mother": 3
+ }
+}
