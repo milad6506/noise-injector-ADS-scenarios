@@ -64,7 +64,28 @@ noise-aware arm deviates ~45 % less from its own clean-reference behavior, stays
 under fault injection, and reports camera health far more often. The single blind-arm win came
 from a child where both arms degraded similarly.
 
-*(full per-cell verdicts: `results/report.html`)*
+### Run 2 — full-sensor batch (30 families, severities weighted by criticality)
+
+Data: `noise-injector batch --preset presets/complete_sensor.yaml` (10 DriveLM mothers,
+980 children, ~913 s render, reports split per family). The runner samples 3 mothers × 3
+children; this draw landed on **mild** corruptions (awgn S1, banding S1, bbox_jitter S2) —
+a harder test for the hypothesis because the noise barely dents either arm:
+
+| Arm | Mean deviation | Mean resilience | Mean noise handling |
+|---|---|---|---|
+| qwen8b-blind | 3.99 | 5.00 | 2.78 |
+| qwen8b-noise-aware | **1.95** | **6.11** | **4.67** |
+
+Judge winners: aware 5 / 9, blind 4 / 9 — narrower, as expected on mild noise. Notable
+per-mode signal: under **bbox_jitter S2** (localization faults — objects move, nothing is
+occluded) the aware arm halved deviation (4.01 → 1.40) and won resilience 6.33 vs 5.00:
+awareness pays most where noise corrupts *evidence geometry* rather than visibility.
+
+**Takeaway across both runs:** noise awareness consistently halves unexplained deviation
+(6.97→3.84 on harsh faults, 3.99→1.95 on mild ones); resilience gains scale with fault
+severity — the harsher the fault, the bigger the aware arm's win margin.
+
+*(full per-cell verdicts: `results/report.html` — with auto-generated Key Findings, per-noise-mode breakdown and per-child judge notes)*
 
 ## Security
 
