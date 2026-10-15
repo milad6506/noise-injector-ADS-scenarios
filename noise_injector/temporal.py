@@ -13,6 +13,7 @@ def activation_mask(
     rng: np.random.Generator,
     severity: int = 1,
     n_cameras: int = 1,
+    camera_index: int | None = None,
 ) -> dict:
     if pattern not in PATTERNS:
         raise ValueError(f"unknown pattern: {pattern} (choose from {PATTERNS})")
@@ -46,11 +47,11 @@ def activation_mask(
         return {"frames": mask, "camera": None}
 
     if pattern == "camera_scoped":
-        cam = int(rng.integers(0, max(1, n_cameras)))
+        cam = camera_index if camera_index is not None else int(rng.integers(0, max(1, n_cameras)))
         return {"frames": [True] * n_frames, "camera": cam}
 
     if pattern == "flaky_camera":
-        cam = int(rng.integers(0, max(1, n_cameras)))
+        cam = camera_index if camera_index is not None else int(rng.integers(0, max(1, n_cameras)))
         p_on = 0.25 + 0.12 * severity
         mask = []
         on = True

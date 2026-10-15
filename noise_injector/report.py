@@ -47,6 +47,11 @@ h2 { font-size:17px; margin:26px 0 8px; border-bottom:1px solid var(--line); pad
 .chip { font-size:10.5px; padding:1px 9px; border-radius:99px; border:1px solid var(--line); color:var(--mut); }
 .children-wrap { margin-top:6px; }
 .children-title { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin:14px 0 4px; }
+.faultchip { color:#ff7b7b; border-color:#a03a3a; font-weight:600; }
+.cell.fault { outline:2px solid #e05252; outline-offset:-2px; }
+.cell.fault .camlabel { color:#ffb3b3; background:rgba(90,20,20,0.7); }
+.cell.fault::before { content:'⚠ FAULT'; position:absolute; top:3px; right:5px; z-index:2; font-size:9px;
+                      font-weight:700; color:#ffb3b3; background:rgba(90,20,20,0.7); padding:0 5px; border-radius:3px; }
 .child-head { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
 .child-title { font-weight:600; font-size:13.5px; }
 .badge { padding:1px 9px; border-radius:99px; font-size:11px; font-weight:600; border:1px solid var(--line); }
@@ -160,7 +165,7 @@ def _frames_from_annotations(offspring_dir: Path, ann: dict) -> tuple[str, list]
     return "boxes", frames, {k: [round(v[0] + 20), round(v[1] + 20)] for k, v in dims.items()}
 
 
-def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge: str, desc: str, veil: float = 0.0, weather: dict | None = None) -> dict:
+def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge: str, desc: str, veil: float = 0.0, weather: dict | None = None, fault_cams=None) -> dict:
     with open(offspring_dir / "annotations.json") as f:
         ann = json.load(f)
     kind, frames, extra = _frames_from_annotations(offspring_dir, ann)
@@ -168,6 +173,8 @@ def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge:
                "veil": veil, "scene_desc": ann.get("scene_description") or ""}
     if weather:
         payload["weather"] = weather
+    if fault_cams:
+        payload["fault_cams"] = sorted(fault_cams)
     if kind == "boxes":
         payload["dims"] = extra
     else:
@@ -238,10 +245,11 @@ def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None
                 fam = ev0.get("family", "")
                 sev = ev0.get("severity") or (k["key"].rsplit("_s", 1)[-1] if "_s" in k["key"] else "")
                 pat = ev0.get("pattern", "")
+                fault_cams = {c for t in ev0.get("targets", []) for c in (t.get("cameras") or [])} or None
                 scenario_data[skey] = _scenario_payload(skey, k["dir"], html.escape(k["key"]),
                                                         layer,
                                                         _child_description(k["m"], str(sev)), veil=veil,
-                                                        weather=weather or None)
+                                                        weather=weather or None, fault_cams=fault_cams)
                 child_items.append(f"""
     <div class="child-box">
       <div class="mode-row">
@@ -249,6 +257,7 @@ def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None
         <span class="mode-name">{html.escape(fam)}</span>
         <span class="chip">severity {sev}</span>
         <span class="chip">pattern: {html.escape(str(pat))}</span>
+        {('<span class="chip faultchip">fault camera: ' + html.escape('/'.join(sorted(scenario_data[skey].get('fault_cams', [])))) + '</span>') if scenario_data[skey].get('fault_cams') else ''}
       </div>
       <div class="dose">{scenario_data[skey]['desc']}</div>
       {player_html(skey)}
@@ -341,8 +350,8 @@ function showFrame(key, dom, i){
   vp.innerHTML = '';
   if (d.kind === 'image') {
     const fr = d.frames[i];
-    let slots = players[key] && players[key].slots;
-    if (!slots) {
+    let st = players[key];
+    if (!st || !st.mosaic || !vp.contains(st.mosaic)) {
       vp.innerHTML = '';
       const mosaic = document.createElement('div'); mosaic.className = 'mosaic';
       const layout = [
@@ -350,7 +359,7 @@ function showFrame(key, dom, i){
         [null, 'EGO', null],
         ['CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
       ];
-      slots = {};
+      const slots = {};
       for (const row of layout) {
         for (const cam of row) {
           const cell = document.createElement('div');
@@ -368,8 +377,10 @@ function showFrame(key, dom, i){
         }
       }
       vp.appendChild(mosaic);
-      players[key] = Object.assign(players[key] || {}, {slots: slots, mosaic: mosaic});
+      st = players[key] = Object.assign(players[key] || {}, {slots: slots, mosaic: mosaic});
     }
+    const slots = st.slots;
+    const faultCams = d.fault_cams || [];
     for (const cam in slots) {
       const img = slots[cam];
       if (fr.cameras[cam]) {
@@ -379,6 +390,7 @@ function showFrame(key, dom, i){
         img.removeAttribute('src');
         img.parentElement.classList.add('nofeed');
       }
+      img.parentElement.classList.toggle('fault', faultCams.indexOf(cam) >= 0);
     }
     players[key] = Object.assign(players[key] || {}, {frame: i});
   } else {

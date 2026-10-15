@@ -12,6 +12,7 @@ import numpy as np
 import yaml
 
 from .adapters.base import Adapter, Scenario
+from .importance import camera_weights
 from .corruptions.annotation import apply_annotation_op
 from .corruptions.image import IMAGE_CORRUPTIONS
 from .corruptions.llm_ops import apply_llm_op
@@ -84,7 +85,18 @@ def _apply_image_op(op, sc: Scenario, seed: int) -> dict:
     pattern = op["pattern"]
     cam_names = sorted({c for fr in sc.frames for c in fr.cameras})
     rng = np.random.default_rng(derive_seed(seed, fam, "image"))
-    mask = activation_mask(pattern, len(sc.frames), rng, op["severity"], len(cam_names))
+    forced = op.get("force_camera")
+    if forced and forced in cam_names:
+        cam_idx = cam_names.index(forced)
+        mask = activation_mask(pattern, len(sc.frames), rng, op["severity"], len(cam_names), camera_index=cam_idx)
+    elif pattern in ("camera_scoped", "flaky_camera") and sc.description:
+        cw = camera_weights(sc.description, cam_names)
+        probs = np.array([cw.get(c, 0.4) for c in cam_names], dtype=np.float64)
+        probs /= probs.sum()
+        cam_idx = int(rng.choice(len(cam_names), p=probs))
+        mask = activation_mask(pattern, len(sc.frames), rng, op["severity"], len(cam_names), camera_index=cam_idx)
+    else:
+        mask = activation_mask(pattern, len(sc.frames), rng, op["severity"], len(cam_names))
     cam_idx = mask["camera"]
     targets = []
     for i, fr in enumerate(sc.frames):

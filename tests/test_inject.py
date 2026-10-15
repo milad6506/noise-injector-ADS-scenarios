@@ -24,7 +24,7 @@ def test_nuscenes_adapter_roundtrip(tmp_path):
     sc = ad.get_scenario("sceneA")
     assert len(sc.frames) == 4
     fr = sc.frames[0]
-    assert set(fr.cameras) == {"CAM_FRONT", "CAM_BACK"}
+    assert len(fr.cameras) == 6
     assert all(c.has_image for c in fr.cameras.values())
     assert len(fr.key_object_infos) == 2
     assert fr.qa["perception"][0]["A"] == "Yes."
@@ -73,11 +73,10 @@ def test_render_offspring_nuscenes(tmp_path):
     manifest = render_scenario(sc, recipe, out, seed=derive_seed(42, "sceneA", "fog_s2"), root=str(root))
     assert (out / "annotations.json").exists()
     assert (out / "manifest.json").exists()
-    assert len(list((out / "images").glob("*.jpg"))) == 8
+    assert len(list((out / "images").glob("*.jpg"))) == 24
     ann = json.load(open(out / "annotations.json"))
     for fid in ann["key_frames"]:
-        for cam in ("CAM_FRONT", "CAM_BACK"):
-            assert ann["key_frames"][fid]["image_paths"][cam] is not None
+        assert all(p is not None for p in ann["key_frames"][fid]["image_paths"].values())
     ev = manifest["injected_events"][0]
     assert ev["family"] == "fog" and ev["layer"] == "A"
     assert len(ev["targets"]) == 4

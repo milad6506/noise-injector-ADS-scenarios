@@ -244,24 +244,61 @@ def cmd_generate(args) -> int:
     adapter = get_adapter(adapter_type, data_dir, max_frames=args.max_frames)
     severities = _parse_severities(args.severities)
     ids = select_scenarios(adapter, str(args.samples))
-    print(f"[inject] {len(ids)} parent(s) x {args.family} severities {severities}"
-          + (f" pattern {args.pattern}" if args.pattern else ""))
-    for sid in ids:
-        sc = adapter.get_scenario(sid)
-        clean_dest = out_root / "offspring" / adapter.name / sid / "clean"
-        if not (clean_dest / "annotations.json").exists():
-            render_scenario(sc, {"name": "clean", "ops": []}, clean_dest,
-                            derive_seed(args.seed, sid, "clean"), root=str(adapter.root))
-            print(f"    rendered: {clean_dest} (baseline)")
-        for s in severities:
+    from .importance import camera_priorities, maneuver_of
+
+    if args.per_camera and args.pattern not in ("camera_scoped", "flaky_camera"):
+        print("note: --per-camera applies to camera-scoped patterns (camera_scoped, flaky_camera); ignoring it", file=sys.stderr)
+
+    if args.per_camera and args.pattern in ("camera_scoped", "flaky_camera"):
+        scen_by_id = {}
+        work = []
+        for sid in ids:
+            sc = adapter.get_scenario(sid)
+            scen_by_id[sid] = sc
+            cams = sorted(sc.frames[0].cameras)
+            for cam in camera_priorities(sc.description, cams):
+                for s in severities:
+                    work.append((sid, cam, s))
+        if args.batch_limit:
+            work = work[: args.batch_limit]
+        print(f"[inject] {len(ids)} parent(s) x {args.family} per-camera (importance-ordered) x severities {severities}"
+              f" — batch limit {args.batch_limit or 'none'} → {len(work)} children")
+        for sid in ids:
+            sc = scen_by_id[sid]
+            clean_dest = out_root / "offspring" / adapter.name / sid / "clean"
+            if not (clean_dest / "annotations.json").exists():
+                render_scenario(sc, {"name": "clean", "ops": []}, clean_dest,
+                                derive_seed(args.seed, sid, "clean"), root=str(adapter.root))
+                print(f"    rendered: {clean_dest} (baseline)")
+        for sid, cam, s in work:
+            sc = scen_by_id[sid]
             recipe = make_recipe(args.family, args.family, [s])[0]
-            if args.pattern:
-                recipe["ops"][0]["pattern"] = args.pattern
-                recipe["name"] = f"{args.family}_{args.pattern}_s{s}"
+            recipe["ops"][0]["pattern"] = args.pattern
+            recipe["ops"][0]["force_camera"] = cam
+            recipe["name"] = f"{args.family}_{args.pattern}_{cam}_s{s}"
             dest = out_root / "offspring" / adapter.name / sid / recipe["name"]
             render_scenario(sc, recipe, dest, derive_seed(args.seed, sid, recipe["name"]),
                             root=str(adapter.root))
             print(f"    rendered: {dest}")
+    else:
+        print(f"[inject] {len(ids)} parent(s) x {args.family} severities {severities}"
+              + (f" pattern {args.pattern}" if args.pattern else ""))
+        for sid in ids:
+            sc = adapter.get_scenario(sid)
+            clean_dest = out_root / "offspring" / adapter.name / sid / "clean"
+            if not (clean_dest / "annotations.json").exists():
+                render_scenario(sc, {"name": "clean", "ops": []}, clean_dest,
+                                derive_seed(args.seed, sid, "clean"), root=str(adapter.root))
+                print(f"    rendered: {clean_dest} (baseline)")
+            for s in severities:
+                recipe = make_recipe(args.family, args.family, [s])[0]
+                if args.pattern:
+                    recipe["ops"][0]["pattern"] = args.pattern
+                    recipe["name"] = f"{args.family}_{args.pattern}_s{s}"
+                dest = out_root / "offspring" / adapter.name / sid / recipe["name"]
+                render_scenario(sc, recipe, dest, derive_seed(args.seed, sid, recipe["name"]),
+                                root=str(adapter.root))
+                print(f"    rendered: {dest}")
 
     report_path = out_root / "report.html"
     write_report(out_root / "offspring", report_path, args.previews)
@@ -354,6 +391,8 @@ def build_parser() -> argparse.ArgumentParser:
     pg.add_argument("--no-fetch-if-missing", dest="fetch_if_missing", action="store_false")
     pg.add_argument("--previews", default=None, help="preview PNG dir to embed in the report")
     pg.add_argument("--pattern", default=None, help=f"override the family's temporal pattern (one of: {', '.join(['persistent', 'intermittent', 'burst', 'transient', 'camera_scoped', 'flaky_camera'])})")
+    pg.add_argument("--per-camera", action="store_true", help="camera-scoped patterns: one child per camera, importance-ordered (front first for forward scenes, rear first for backing)")
+    pg.add_argument("--batch-limit", type=int, default=None, help="cap total perturbed children; important (maneuver-relevant) cameras are created first")
     pg.add_argument("--data-root", default=None, help="use an existing local dataset root (skips fetching)")
     pg.add_argument("--seed", type=int, default=42)
     pg.add_argument("--out", required=True, help="testset output directory (report.html lands here)")

@@ -13,16 +13,19 @@ from noise_injector.temporal import activation_mask, derive_seed
 def make_fake_nuscenes_root(tmp_path):
     import cv2
 
+    cams = ["CAM_FRONT", "CAM_FRONT_LEFT", "CAM_FRONT_RIGHT", "CAM_BACK", "CAM_BACK_LEFT", "CAM_BACK_RIGHT"]
     root = tmp_path / "drivelm"
-    (root / "nuscenes" / "samples" / "CAM_FRONT").mkdir(parents=True)
-    (root / "nuscenes" / "samples" / "CAM_BACK").mkdir(parents=True)
+    for cam in cams:
+        (root / "nuscenes" / "samples" / cam).mkdir(parents=True)
     rng = np.random.default_rng(0)
     frames = {}
     for t in range(4):
         fid = f"f{t}"
-        for cam in ("CAM_FRONT", "CAM_BACK"):
+        image_paths = {}
+        for cam in cams:
             img = rng.integers(0, 255, (48, 64, 3), dtype=np.uint8)
             cv2.imwrite(str(root / "nuscenes" / "samples" / cam / f"img_{t}_{cam}.jpg"), img)
+            image_paths[cam] = f"../nuscenes/samples/{cam}/img_{t}_{cam}.jpg"
         frames[fid] = {
             "key_object_infos": {
                 "<c1,CAM_FRONT,10.0,20.0>": {"Category": "Vehicle", "Status": "Moving",
@@ -34,10 +37,7 @@ def make_fake_nuscenes_root(tmp_path):
                 "perception": [{"Q": "Is there a vehicle? <c1,CAM_FRONT,10.0,20.0>", "A": "Yes.", "C": None}],
                 "planning": [{"Q": "What should the ego do?", "A": "Decelerate gradually without braking.", "C": None}],
             },
-            "image_paths": {
-                "CAM_FRONT": f"../nuscenes/samples/CAM_FRONT/img_{t}_CAM_FRONT.jpg",
-                "CAM_BACK": f"../nuscenes/samples/CAM_BACK/img_{t}_CAM_BACK.jpg",
-            },
+            "image_paths": image_paths,
         }
     scenes = {
         "sceneA": {"scene_description": "Ego drives straight.", "key_frames": frames},
