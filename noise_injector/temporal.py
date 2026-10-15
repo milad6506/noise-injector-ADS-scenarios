@@ -49,6 +49,22 @@ def activation_mask(
         cam = int(rng.integers(0, max(1, n_cameras)))
         return {"frames": [True] * n_frames, "camera": cam}
 
+    if pattern == "flaky_camera":
+        cam = int(rng.integers(0, max(1, n_cameras)))
+        p_on = 0.25 + 0.12 * severity
+        mask = []
+        on = True
+        for _ in range(n_frames):
+            if on:
+                mask.append(True)
+                if rng.random() > 0.55 + 0.08 * severity:
+                    on = False
+            else:
+                mask.append(False)
+                if rng.random() < p_on * 0.5:
+                    on = True
+        return {"frames": mask, "camera": cam}
+
     raise ValueError(f"unhandled pattern: {pattern}")
 
 

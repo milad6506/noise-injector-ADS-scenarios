@@ -8,7 +8,7 @@ from typing import Any, Callable
 SEVERITY_MIN = 1
 SEVERITY_MAX = 5
 
-PATTERNS = ("persistent", "intermittent", "burst", "transient", "camera_scoped")
+PATTERNS = ("persistent", "intermittent", "burst", "transient", "camera_scoped", "flaky_camera")
 
 WAYMO_TYPE_MAP = {0: "Unknown", 1: "Vehicle", 2: "Pedestrian", 3: "Cyclist"}
 

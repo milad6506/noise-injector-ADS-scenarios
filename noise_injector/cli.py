@@ -213,8 +213,9 @@ def cmd_generate(args) -> int:
     from .fetch import fetch_lyft
 
     out_root = Path(args.out)
-    data_dir = out_root / "data" / args.dataset
+    data_dir = Path(args.data_root).expanduser() if args.data_root else out_root / "data" / args.dataset
     adapter_type = {"drivelm": "nuscenes", "carla": "carla", "waymo": "waymo"}.get(args.dataset, args.dataset)
+    from .fetch import fetch_lyft
 
     need_fetch = args.fetch_if_missing and not data_dir.exists()
     if need_fetch:
@@ -243,7 +244,8 @@ def cmd_generate(args) -> int:
     adapter = get_adapter(adapter_type, data_dir, max_frames=args.max_frames)
     severities = _parse_severities(args.severities)
     ids = select_scenarios(adapter, str(args.samples))
-    print(f"[inject] {len(ids)} parent(s) x {args.family} severities {severities}")
+    print(f"[inject] {len(ids)} parent(s) x {args.family} severities {severities}"
+          + (f" pattern {args.pattern}" if args.pattern else ""))
     for sid in ids:
         sc = adapter.get_scenario(sid)
         clean_dest = out_root / "offspring" / adapter.name / sid / "clean"
@@ -253,6 +255,9 @@ def cmd_generate(args) -> int:
             print(f"    rendered: {clean_dest} (baseline)")
         for s in severities:
             recipe = make_recipe(args.family, args.family, [s])[0]
+            if args.pattern:
+                recipe["ops"][0]["pattern"] = args.pattern
+                recipe["name"] = f"{args.family}_{args.pattern}_s{s}"
             dest = out_root / "offspring" / adapter.name / sid / recipe["name"]
             render_scenario(sc, recipe, dest, derive_seed(args.seed, sid, recipe["name"]),
                             root=str(adapter.root))
@@ -348,6 +353,8 @@ def build_parser() -> argparse.ArgumentParser:
     pg.add_argument("--fetch-if-missing", dest="fetch_if_missing", action="store_true", default=True)
     pg.add_argument("--no-fetch-if-missing", dest="fetch_if_missing", action="store_false")
     pg.add_argument("--previews", default=None, help="preview PNG dir to embed in the report")
+    pg.add_argument("--pattern", default=None, help=f"override the family's temporal pattern (one of: {', '.join(['persistent', 'intermittent', 'burst', 'transient', 'camera_scoped', 'flaky_camera'])})")
+    pg.add_argument("--data-root", default=None, help="use an existing local dataset root (skips fetching)")
     pg.add_argument("--seed", type=int, default=42)
     pg.add_argument("--out", required=True, help="testset output directory (report.html lands here)")
     pg.set_defaults(fn=cmd_generate)

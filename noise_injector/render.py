@@ -90,7 +90,7 @@ def _apply_image_op(op, sc: Scenario, seed: int) -> dict:
     for i, fr in enumerate(sc.frames):
         if not mask["frames"][i]:
             continue
-        if pattern == "camera_scoped" and cam_idx is not None:
+        if cam_idx is not None:
             cams = [cam_names[cam_idx]] if cam_names[cam_idx] in fr.cameras else []
         else:
             cams = sorted(fr.cameras)

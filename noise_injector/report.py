@@ -115,10 +115,14 @@ def _frames_from_annotations(offspring_dir: Path, ann: dict) -> tuple[str, list]
     if has_images:
         frames = []
         cams_all = []
+        all_cams = sorted({c for fr in ann["key_frames"].values()
+                           for c, rel in (fr.get("image_paths") or {}).items()
+                           if rel and (offspring_dir / rel).exists()})
+        embed_cams = set(all_cams[:2]) if len(all_cams) > 3 else set(all_cams)
         for fid, fr in ann["key_frames"].items():
             cams = {}
             for cam, rel in (fr.get("image_paths") or {}).items():
-                if rel and (offspring_dir / rel).exists():
+                if cam in embed_cams and rel and (offspring_dir / rel).exists():
                     b64 = _b64_image(offspring_dir / rel)
                     if b64:
                         cams[cam] = b64
