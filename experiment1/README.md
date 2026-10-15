@@ -85,6 +85,27 @@ awareness pays most where noise corrupts *evidence geometry* rather than visibil
 (6.97→3.84 on harsh faults, 3.99→1.95 on mild ones); resilience gains scale with fault
 severity — the harsher the fault, the bigger the aware arm's win margin.
 
+### Run 3 — severe doses (`--sample-strategy harsh`: fog/glare/lens_dirt/snow/water_splash/low_light at S5)
+
+| Arm | Mean deviation | Mean resilience | Mean noise handling |
+|---|---|---|---|
+| qwen8b-blind | 5.65 | 4.89 | 3.89 |
+| **qwen8b-noise-aware** | **3.99** | **7.22** | **6.22** |
+
+Judge winners: **aware 7 / 9, tie 1, blind 1** — the largest resilience gap of the three runs
+(+2.33 over the blind arm). At severe doses the blind arm loses command stability
+(deviation 5.65) while the aware arm keeps the highest resilience recorded so far.
+
+**Severity-response summary (judge mean resilience, blind → aware):**
+| Noise regime | blind | aware | gap | aware wins |
+|---|---|---|---|---|
+| mild (S1–S2 stochastic) | 5.00 | 6.11 | +1.11 | 5/9 |
+| harsh-structure (dropout/freeze/jpeg) | 4.22 | 6.22 | +2.00 | 8/9 |
+| **severe dose (S5 weather/optical)** | 4.89 | **7.22** | **+2.33** | 7/9 (+1 tie) |
+
+The aware arm's advantage grows monotonically with fault severity — supporting the design
+premise: noise awareness buys the most exactly where the sensor line is worst.
+
 *(full per-cell verdicts: `results/report.html` — with auto-generated Key Findings, per-noise-mode breakdown and per-child judge notes)*
 
 ## Security

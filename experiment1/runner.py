@@ -61,6 +61,19 @@ class OpenAICompatClient:
         self.api_key_env = api_key_env
 
     def chat(self, messages: list, max_tokens: int = 700, temperature: float = 0.0) -> str:
+        for attempt in range(5):
+            try:
+                return self._chat_once(messages, max_tokens, temperature)
+            except urllib.error.HTTPError as e:
+                if e.code in (429, 500, 502, 503) and attempt < 4:
+                    wait = 15.0 * (attempt + 1)
+                    print(f"    [rate-limit {e.code}] waiting {wait:.0f}s (attempt {attempt + 1}/5)")
+                    time.sleep(wait)
+                    continue
+                raise
+        raise RuntimeError("unreachable")
+
+    def _chat_once(self, messages: list, max_tokens: int, temperature: float) -> str:
         key = os.environ.get(self.api_key_env)
         payload = {"model": self.model, "messages": messages,
                    "temperature": temperature, "max_tokens": max_tokens}
@@ -220,7 +233,11 @@ def run_experiment(args) -> dict:
             mothers[sid] = mp.parent
         else:
             fam = m["injected_events"][0]["family"]
-            children_by_mother.setdefault(sid, []).append((fam, mp.parent))
+            try:
+                sev = int(mp.parent.name.rsplit("_s", 1)[-1])
+            except (ValueError, IndexError):
+                sev = 0
+            children_by_mother.setdefault(sid, []).append((fam, mp.parent, sev))
     mother_ids = sorted(mothers)[: args.mothers]
     results = {"arms": ARMS, "vlm": vlm_cfg, "judge": judge_cfg, "cells": [], "meta": {
         "run_dir": str(run_dir), "max_frames": args.max_frames,
@@ -233,11 +250,16 @@ def run_experiment(args) -> dict:
         mother_ann = json.load(open(mother_dir / "annotations.json"))
         child_dirs = []
         used_fams = set()
-        for fam, d in sorted(children_by_mother.get(sid, [])):
+        pool = children_by_mother.get(sid, [])
+        if getattr(args, "sample_strategy", "default") == "harsh":
+            pool = sorted(pool, key=lambda x: (-x[2], x[0]))
+        else:
+            pool = sorted(pool, key=lambda x: (x[0], -x[2]))
+        for fam, d, _sev in pool:
             if len(child_dirs) >= args.per_mother:
                 break
             if fam in used_fams and len(child_dirs) + len(
-                    set(f for f, _ in children_by_mother.get(sid, []) if f not in used_fams)) > args.per_mother:
+                    set(f for f, _, _ in pool if f not in used_fams)) > args.per_mother:
                 continue
             used_fams.add(fam)
             child_dirs.append(d)
@@ -390,6 +412,8 @@ def main(argv=None) -> int:
     p.add_argument("--mothers", type=int, default=3)
     p.add_argument("--per-mother", type=int, default=3)
     p.add_argument("--max-frames", type=int, default=2)
+    p.add_argument("--sample-strategy", choices=["default", "harsh"], default="default",
+                   help="harsh: sample the highest-severity children (direct severe-noise test)")
     p.add_argument("--vlm-base-url", default="https://openrouter.ai/api/v1")
     p.add_argument("--vlm-model", default="qwen/qwen3-vl-8b-instruct")
     p.add_argument("--judge-base-url", default="https://openrouter.ai/api/v1")
