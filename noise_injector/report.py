@@ -37,6 +37,16 @@ h2 { font-size:17px; margin:26px 0 8px; border-bottom:1px solid var(--line); pad
 .node-body { display:none; padding:6px 8px 12px 26px; }
 .open > .node-body { display:block; }
 .child-box { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin:10px 0; }
+.mother-box { background:linear-gradient(180deg,#1a2030,#161a22); border:1px solid #3350a0; border-radius:12px;
+              padding:14px 18px; margin:6px 0 16px; }
+.mother-tag { display:inline-block; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+              color:#9ecbff; border:1px solid #3350a0; border-radius:99px; padding:1px 10px; margin-bottom:6px; }
+.scene-desc { color:var(--text); font-size:13px; margin:4px 0 2px; }
+.mode-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 2px; }
+.mode-name { font-weight:700; font-size:13.5px; color:#9ecbff; font-family:ui-monospace,Menlo,monospace; }
+.chip { font-size:10.5px; padding:1px 9px; border-radius:99px; border:1px solid var(--line); color:var(--mut); }
+.children-wrap { margin-top:6px; }
+.children-title { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin:14px 0 4px; }
 .child-head { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
 .child-title { font-weight:600; font-size:13.5px; }
 .badge { padding:1px 9px; border-radius:99px; font-size:11px; font-weight:600; border:1px solid var(--line); }
@@ -83,7 +93,7 @@ def _dose_summary(ev: dict) -> str:
     return f"~{n} target(s) across {len(ev.get('targets', []))} frame(s)"
 
 
-def _child_description(m: dict) -> str:
+def _child_description(m: dict, sev_hint: str = "") -> str:
     parts = []
     for ev in m.get("injected_events", []):
         fam = ev.get("family", "")
@@ -91,7 +101,7 @@ def _child_description(m: dict) -> str:
             desc = family_def(fam).description
         except KeyError:
             desc = ""
-        sev = (ev.get("params") or {}).get("severity") or ev.get("strength") or ""
+        sev = ev.get("severity") or (ev.get("params") or {}).get("severity") or ev.get("strength") or sev_hint
         parts.append(f"{html.escape(desc)} · pattern {html.escape(str(ev.get('pattern','')))} · severity {sev} — {_dose_summary(ev)}")
     return " | ".join(parts) or "clean copy of the parent scenario (baseline)"
 
@@ -140,7 +150,8 @@ def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge:
     with open(offspring_dir / "annotations.json") as f:
         ann = json.load(f)
     kind, frames, extra = _frames_from_annotations(offspring_dir, ann)
-    payload = {"label": label, "badge": badge, "desc": desc, "kind": kind, "frames": frames, "veil": veil}
+    payload = {"label": label, "badge": badge, "desc": desc, "kind": kind, "frames": frames,
+               "veil": veil, "scene_desc": ann.get("scene_description") or ""}
     if weather:
         payload["weather"] = weather
     if kind == "boxes":
@@ -208,29 +219,44 @@ def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None
                     if ev.get("family") == "rain":
                         weather = {"rain": int((ev.get("params") or {}).get("n_streaks", 0)),
                                    "darken": float((ev.get("params") or {}).get("darken", 0.0))}
+                layer = str(k["m"]["injected_events"][0].get("layer", ""))
+                ev0 = k["m"]["injected_events"][0]
+                fam = ev0.get("family", "")
+                sev = ev0.get("severity") or (k["key"].rsplit("_s", 1)[-1] if "_s" in k["key"] else "")
+                pat = ev0.get("pattern", "")
                 scenario_data[skey] = _scenario_payload(skey, k["dir"], html.escape(k["key"]),
-                                                        str(k["m"]["injected_events"][0].get("layer", "")),
-                                                        _child_description(k["m"]), veil=veil,
+                                                        layer,
+                                                        _child_description(k["m"], str(sev)), veil=veil,
                                                         weather=weather or None)
                 child_items.append(f"""
     <div class="child-box">
-      <div class="child-head"><span class="badge {scenario_data[skey]['badge']}">{scenario_data[skey]['badge']}</span>
-        <span class="child-title">{scenario_data[skey]['label']}</span>
-        <span class="dose">{scenario_data[skey]['desc']}</span></div>
+      <div class="mode-row">
+        <span class="badge {layer}">{layer}</span>
+        <span class="mode-name">{html.escape(fam)}</span>
+        <span class="chip">severity {sev}</span>
+        <span class="chip">pattern: {html.escape(str(pat))}</span>
+      </div>
+      <div class="dose">{scenario_data[skey]['desc']}</div>
       {player_html(skey)}
     </div>""")
+            mother_meta = ""
+            if parent_payload:
+                mother_meta = (f"<div class='sub'>{len(parent_payload['frames'])} frames · "
+                               f"{html.escape(parent_payload['kind'])} view · seed-deterministic</div>")
             items.append(f"""
   <li class="node" id="node-{html.escape(adapter)}-{html.escape(sid)}">
     <div class="node-head" onclick="toggleNode('{html.escape(adapter)}|{html.escape(sid)}')">
       <span class="caret">▶</span>
       <div style="flex:1">
         <div class="node-title">{html.escape(sid)}</div>
-        <div class="node-desc">{len(kids) - (1 if parent_payload else 0)} perturbed scenario(s) generated from this parent
-        {' · <span class="badge clean">clean</span> baseline included' if parent_payload else ''}</div>
+        <div class="node-desc">{len(child_items)} perturbed scenario(s) generated from this mother</div>
       </div>
     </div>
     <div class="node-body">
-    {'<div class="child-box">' + player_html(f"{adapter}:{sid}:parent") + '</div>' if parent_payload else ''}
+    {'<div class="mother-box"><span class="mother-tag">mother scenario — original</span>' +
+      ('<div class="scene-desc">' + html.escape(str(parent_payload['scene_desc'])) + '</div>' if parent_payload['scene_desc'] else '') +
+      mother_meta + player_html(f"{adapter}:{sid}:parent") + '</div>' if parent_payload else ''}
+    {'<div class="children-title">perturbed children — noise mode per child</div>' if child_items else ''}
     {''.join(child_items)}
     </div>
   </li>""")

@@ -114,7 +114,7 @@ def _apply_image_op(op, sc: Scenario, seed: int) -> dict:
                 {"family": fam, "params": params}
             )
         targets.append({"frame_id": fr.frame_id, "cameras": cams})
-    return {"family": fam, "layer": "A", "pattern": pattern, "params": params, "targets": targets}
+    return {"family": fam, "layer": "A", "pattern": pattern, "severity": op["severity"], "params": params, "targets": targets}
 
 
 def _apply_frame_freeze(op, sc: Scenario, seed: int) -> dict:
@@ -129,7 +129,7 @@ def _apply_frame_freeze(op, sc: Scenario, seed: int) -> dict:
             continue
         fr.metadata["frozen_from"] = sc.frames[i - 1].frame_id
         targets.append({"frame_id": fr.frame_id, "copy_of": sc.frames[i - 1].frame_id})
-    return {"family": "frame_freeze", "layer": "A", "pattern": pattern, "params": params, "targets": targets}
+    return {"family": "frame_freeze", "layer": "A", "pattern": pattern, "severity": op["severity"], "params": params, "targets": targets}
 
 
 def _apply_annotation_op(op, sc: Scenario, seed: int) -> dict:
@@ -145,7 +145,7 @@ def _apply_annotation_op(op, sc: Scenario, seed: int) -> dict:
         detail = apply_annotation_op(fam, fr.key_object_infos, params, rng)
         if detail:
             targets.append({"frame_id": fr.frame_id, "detail": detail})
-    return {"family": fam, "layer": "B", "pattern": op["pattern"], "params": params, "targets": targets}
+    return {"family": fam, "layer": "B", "pattern": op["pattern"], "severity": op["severity"], "params": params, "targets": targets}
 
 
 def _apply_qa_op(op, sc: Scenario, seed: int) -> dict:
@@ -161,7 +161,7 @@ def _apply_qa_op(op, sc: Scenario, seed: int) -> dict:
         detail = apply_qa_op(fam, fr.qa, params, rng)
         if detail:
             targets.append({"frame_id": fr.frame_id, "detail": detail})
-    return {"family": fam, "layer": "C", "pattern": op["pattern"], "params": params, "targets": targets}
+    return {"family": fam, "layer": "C", "pattern": op["pattern"], "severity": op["severity"], "params": params, "targets": targets}
 
 
 def _apply_llm_op(op, sc: Scenario, seed: int, backend: LLMBackend, cache: LLMCache | None) -> dict:
@@ -188,6 +188,7 @@ def _apply_llm_op(op, sc: Scenario, seed: int, backend: LLMBackend, cache: LLMCa
         "layer": layer,
         "pattern": op["pattern"],
         "params": params,
+        "severity": op["severity"],
         "backend": f"{backend.model}" if backend else None,
         "targets": targets,
     }
