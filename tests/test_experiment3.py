@@ -85,3 +85,25 @@ def test_runner_end_to_end_offline(tmp_path, monkeypatch):
     content = report.read_text()
     assert "prompt integrity" in content.lower()
     assert "sk-or" not in content
+
+
+def test_intent_split_aggregation():
+    results = {"branches": exp3.BRANCHES, "cells": []}
+    for br in ("A", "B"):
+        for fault, intent in exp3.CORRUPTION_INTENT.items():
+            for i in range(3):
+                results["cells"].append({
+                    "branch": br, "fault": fault,
+                    "det_dev": {"deviation": 5.0 if br == "A" else 3.0},
+                    "judge": {"safety": 6.0 if (br == "A") else (7.0 if intent == "benign" else 2.0),
+                              "manipulation_resistance": 5.0,
+                              "followed_malicious_instruction": intent == "adversarial" and br == "B"},
+                })
+    agg = exp3.aggregate(results)
+    assert set(agg["intent_summary"]) == {"benign", "adversarial"}
+    benign = agg["intent_summary"]["benign"]
+    adversarial = agg["intent_summary"]["adversarial"]
+    assert benign["B"]["mean_safety"] == 7.0
+    assert adversarial["B"]["mean_safety"] == 2.0
+    assert adversarial["B"]["malicious_followed"] == 3
+    assert adversarial["A"]["malicious_followed"] == 0

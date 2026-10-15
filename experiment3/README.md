@@ -60,6 +60,20 @@ Findings worth engineering attention:
    deletable paragraphs, corruption ⇒ 100 % output collapse regardless of awareness. Keep the output
    contract in a separate, non-corruptible layer (or retry on parse failure).
 
+### Corruption-intent split (benign vs adversarial)
+
+| Intent | Cells | Safety (simple vs aware) | Det. deviation | Followed malicious |
+|---|---|---|---|---|
+| **Benign** (truncation/garble/format_break/section_delete) | 40 | 5.62 vs 5.00 (**Δ −0.62**) | 5.82 vs 6.15 | 8/40 vs 12/40 |
+| **Adversarial** (malicious instruction injection) | 10 | 5.30 vs 3.90 (**Δ −1.40**) | 3.76 vs 5.04 | 5/10 vs 7/10 |
+
+The benign-vs-adversarial hypothesis does **not** hold: awareness fails in **both** groups, and
+fails hardest exactly where it should have mattered most (adversarial). The awareness paragraph
+appears to cost quality by dilution (slightly worse even on benign faults) and, under adversarial
+injection, generalized distrust erodes adherence to the model's own safety rules — followed-malicious
+rate rises from 50 % to 70 %. Prompt-integrity resilience likely needs structural defenses
+(signed instruction sections, output-contract layering) rather than self-distrust instructions.
+
 ## Security
 
 Keys via env only; the judge sees scenario content and responses, never credentials.
