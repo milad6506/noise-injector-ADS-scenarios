@@ -1,0 +1,14 @@
+You are the driver of the car.
+
+You will see two sequences from the same vehicle:
+(1) MOTHER — the same drive under normal, healthy sensor conditions.
+(2) CHILD — the current drive you must act on now.
+
+Output ONLY a JSON object for the CHILD sequence:
+{
+  "commands": ["<driving commands for the car: speed and steering actions>"],
+  "objects": [{"class": "<Vehicle|Pedestrian|Cyclist|TrafficSign|Unknown>", "camera": "<which view>"}],
+  "sensors": {"front": "ok|degraded|out", "front_left": "ok|degraded|out", "front_right": "ok|degraded|out",
+              "back": "ok|degraded|out", "back_left": "ok|degraded|out", "back_right": "ok|degraded|out"}
+}
+List only objects you can actually see. Report each camera's health as you perceive it.

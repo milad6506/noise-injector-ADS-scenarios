@@ -1,0 +1,31 @@
+# Experiment 2 — parameter-size effect on noise awareness.
+# Point arms at ANY OpenAI-compatible VLM endpoint (local llama.cpp / ollama / cloud).
+# The two arms below differ ONLY in the prompt file. Keys: env var names only — never values.
+
+# SmolVLM-500M served locally (see README: one-line llama-server command):
+arms:
+  - name: smolvlm-500m-blind
+    base_url: http://127.0.0.1:8081/v1
+    model: smolvlm
+    api_key_env: ""            # local server needs no key
+    prompt_file: ../experiment1/prompts/blind_prompt.txt
+  - name: smolvlm-500m-noise-aware
+    base_url: http://127.0.0.1:8081/v1
+    model: smolvlm
+    api_key_env: ""
+    prompt_file: ../experiment1/prompts/noise_aware_prompt.txt
+
+# Plug in your own tiny VLM instead (example):
+#   - name: my-tiny-vlm-blind
+#     base_url: http://127.0.0.1:9999/v1
+#     model: my-vlm
+#     api_key_env: MY_VLM_KEY
+#     prompt_file: prompts/blind_prompt.txt
+
+judge:
+  base_url: https://openrouter.ai/api/v1
+  model: z-ai/glm-5.3-flash
+  api_key_env: OPENROUTER_API_KEY
+
+# optional: a previous experiment's results.json (same protocol) for the cross-size comparison
+qwen_reference: ../experiment1/results/results.json

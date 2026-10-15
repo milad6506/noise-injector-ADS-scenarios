@@ -7,6 +7,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "experiment1"))
 
+sys.modules.pop("runner", None)
 import runner as exp1  # noqa: E402
 
 from .fixtures import make_fake_nuscenes_root  # noqa: E402
