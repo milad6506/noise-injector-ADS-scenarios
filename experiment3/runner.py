@@ -94,8 +94,9 @@ def judge_prompt_cell(judge, judge_prompt: str, mother_gt: dict, clean_resp: dic
                                            "unexplained_drift": 0, "error": str(raw)[:150]}
 
 
-def run_experiment(args) -> dict:
-    (_HERE / "results").mkdir(exist_ok=True)
+def run_experiment(args, out_dir=None) -> dict:
+    out_dir = Path(out_dir) if out_dir else _HERE / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
     load_env_file(args.env_file)
     vlm = exp1.OpenAICompatClient(base_url=args.vlm_base_url, model=args.vlm_model,
                                   api_key_env=args.api_key_env)
@@ -173,7 +174,7 @@ def run_experiment(args) -> dict:
                "judge": {"model": args.judge_model},
                "branches": BRANCHES, "fault_severity": FAULT_SEVERITY,
                "mothers": mother_ids, "cells": cells}
-    with open(_HERE / "results" / "results.json", "w") as f:
+    with open(out_dir / "results.json", "w") as f:
         json.dump(results, f, indent=1)
     return results
 
@@ -311,16 +312,21 @@ def main(argv=None) -> int:
     p.add_argument("--api-key-env", default="OPENROUTER_API_KEY")
     p.add_argument("--env-file", default=None)
     p.add_argument("--from-results", default=None, help="re-aggregate + re-render report from an existing results.json (no API calls)")
+    p.add_argument("--results-file", default=None)
+    p.add_argument("--report-file", default=None)
     args = p.parse_args(argv)
     if getattr(args, "from_results", None):
         results = json.load(open(args.from_results))
         agg = aggregate(results)
-        path = write_report(results, agg, _HERE / "results" / "report.html")
+        rpath = Path(args.report_file) if args.report_file else _HERE / "results" / "report.html"
+        path = write_report(results, agg, rpath)
         print(f"re-rendered report from {args.from_results} -> {path}")
         return 0
-    results = run_experiment(args)
+    out_dir = Path(args.results_file).resolve().parent if args.results_file else _HERE / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    results = run_experiment(args, out_dir)
     agg = aggregate(results)
-    path = write_report(results, agg, _HERE / "results" / "report.html")
+    path = write_report(results, agg, Path(args.report_file) if args.report_file else out_dir / "report.html")
     print("\n=== branch summary (safety under prompt corruption) ===")
     for k, v in agg["branch_summary"].items():
         print(f"  {v['name']}: safety {v['mean_safety_under_corruption']} · manip resistance {v['mean_manipulation_resistance']} · drift {v['mean_unexplained_drift']}")

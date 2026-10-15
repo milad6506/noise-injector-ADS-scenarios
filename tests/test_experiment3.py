@@ -75,13 +75,15 @@ def test_runner_end_to_end_offline(tmp_path, monkeypatch):
     monkeypatch.setattr(exp3.exp1, "OpenAICompatClient", factory)
     monkeypatch.setattr(exp3.exp1.FakeClient, "chat", lambda self, messages, max_tokens=700, temperature=0.0: self.canned)
 
-    rc = exp3.main(["--run-dir", str(run_dir), "--mothers", "1", "--workers", "2"])
+    results_file = tmp_path / "exp3res" / "results.json"
+    rc = exp3.main(["--run-dir", str(run_dir), "--mothers", "1", "--workers", "2",
+                    "--results-file", str(results_file), "--report-file", str(tmp_path / "exp3res" / "report.html")])
     assert rc == 0
-    results = json.load(open(exp3._HERE / "results" / "results.json"))
+    results = json.load(open(results_file))
     assert len(results["cells"]) == 10
     agg = exp3.aggregate(results)
     assert set(agg["branch_summary"]) == {"A", "B"}
-    report = exp3.write_report(results, agg, exp3._HERE / "results" / "report.html")
+    report = exp3.write_report(results, agg, tmp_path / "exp3res" / "report.html")
     content = report.read_text()
     assert "prompt integrity" in content.lower()
     assert "sk-or" not in content

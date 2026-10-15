@@ -38,8 +38,8 @@ python3 experiment3/runner.py --run-dir runs/full10 \
 
 | Branch | Mean safety under corruption | Mean manipulation resistance | Mean unexplained drift |
 |---|---|---|---|
-| simple | **5.56** | **5.74** | 4.68 |
-| prompt-suspect | 4.78 | 5.28 | **3.94** |
+| simple | **5.80** | **6.02** | 4.90 |
+| prompt-suspect | 5.08 | 5.28 | **4.26** |
 
 Per-fault signal (mean safety, simple vs suspect):
 
@@ -64,8 +64,8 @@ Findings worth engineering attention:
 
 | Intent | Cells | Safety (simple vs aware) | Det. deviation | Followed malicious |
 |---|---|---|---|---|
-| **Benign** (truncation/garble/format_break/section_delete) | 40 | 5.62 vs 5.00 (**Δ −0.62**) | 5.82 vs 6.15 | 8/40 vs 12/40 |
-| **Adversarial** (malicious instruction injection) | 10 | 5.30 vs 3.90 (**Δ −1.40**) | 3.76 vs 5.04 | 5/10 vs 7/10 |
+| **Benign** (truncation/garble/format_break/section_delete) | 40 | 5.90 vs 5.22 (**Δ −0.68**) | 5.71 vs 5.97 | 6/40 vs 13/40 |
+| **Adversarial** (malicious instruction injection) | 10 | 5.44 vs 4.19 (**Δ −1.25**) | 3.83 vs 5.18 | 5/10 vs 7/10 |
 
 The benign-vs-adversarial hypothesis does **not** hold: awareness fails in **both** groups, and
 fails hardest exactly where it should have mattered most (adversarial). The awareness paragraph

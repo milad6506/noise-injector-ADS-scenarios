@@ -213,7 +213,9 @@ ARMS = [
 ]
 
 
-def run_experiment(args) -> dict:
+def run_experiment(args, out_dir=None) -> dict:
+    out_dir = Path(out_dir) if out_dir else _HERE / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
     load_env_file(args.env_file)
     vlm_cfg = {"base_url": args.vlm_base_url, "model": args.vlm_model, "api_key_env": args.api_key_env}
     judge_cfg = {"base_url": args.judge_base_url, "model": args.judge_model, "api_key_env": args.api_key_env}
@@ -242,8 +244,6 @@ def run_experiment(args) -> dict:
     results = {"arms": ARMS, "vlm": vlm_cfg, "judge": judge_cfg, "cells": [], "meta": {
         "run_dir": str(run_dir), "max_frames": args.max_frames,
         "mothers": mother_ids, "per_mother": args.per_mother}}
-    out_dir = _HERE / "results"
-    out_dir.mkdir(exist_ok=True)
 
     for midx, sid in enumerate(mother_ids):
         mother_dir = mothers[sid]
@@ -420,10 +420,14 @@ def main(argv=None) -> int:
     p.add_argument("--judge-model", default="z-ai/glm-5.3-flash")
     p.add_argument("--api-key-env", default="OPENROUTER_API_KEY")
     p.add_argument("--env-file", default=None, help="optional .env file with the API key (never committed)")
+    p.add_argument("--results-file", default=None, help="where to write results.json (default experiment1/results/)")
+    p.add_argument("--report-file", default=None, help="where to write report.html (default experiment1/results/)")
     args = p.parse_args(argv)
-    results = run_experiment(args)
+    out_dir = Path(args.results_file).resolve().parent if args.results_file else _HERE / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    results = run_experiment(args, out_dir)
     agg = aggregate(results)
-    path = write_report(results, agg, _HERE / "results" / "report.html")
+    path = write_report(results, agg, Path(args.report_file) if args.report_file else out_dir / "report.html")
     print("\n=== aggregate ===")
     for k, v in agg["per_arm"].items():
         print(f"  {v['name']}: dev {v['mean_det_deviation']} · resilience {v['mean_resilience']} · noise handling {v['mean_noise_handling']}")

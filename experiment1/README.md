@@ -87,6 +87,10 @@ severity — the harsher the fault, the bigger the aware arm's win margin.
 
 ### Run 3 — severe doses (`--sample-strategy harsh`: fog/glare/lens_dirt/snow/water_splash/low_light at S5)
 
+First run: blind 5.65 / 4.89 / 3.89 vs aware 3.99 / 7.22 / 6.22 — winners aware 7, tie 1, blind 1.
+Re-run reproduction: blind 6.89 / 4.22 / 3.22 vs aware 3.93 / 7.44 / 6.11 — winners aware 8, tie 1.
+(both live runs reproduced; small judge-score variance between runs)
+
 | Arm | Mean deviation | Mean resilience | Mean noise handling |
 |---|---|---|---|
 | qwen8b-blind | 5.65 | 4.89 | 3.89 |

@@ -19,9 +19,14 @@ import yaml
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent))
-sys.path.insert(0, str(_HERE.parent / "experiment1"))
 
-import runner as exp1  # noqa: E402
+import importlib.util  # noqa: E402
+
+_spec = importlib.util.spec_from_file_location(
+    "exp1_runner_protocol", _HERE.parent / "experiment1" / "runner.py")
+exp1 = importlib.util.module_from_spec(_spec)
+sys.modules["exp1_runner_protocol"] = exp1
+_spec.loader.exec_module(exp1)
 from noise_injector.report import _CSS  # noqa: E402
 
 
@@ -30,8 +35,9 @@ def load_config(path: str | Path) -> dict:
         return yaml.safe_load(f)
 
 
-def run_experiment(args) -> dict:
-    (_HERE / "results").mkdir(exist_ok=True)
+def run_experiment(args, out_dir=None) -> dict:
+    out_dir = Path(out_dir) if out_dir else _HERE / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
     cfg = load_config(args.config)
     exp1.load_env_file(args.env_file)
     judge_cfg = cfg["judge"]
@@ -107,13 +113,13 @@ def run_experiment(args) -> dict:
             cells.append({"mother": sid, "child": cdir.name, "noise_mode": noise_mode,
                           "arms": arms_data, "judge": verdict})
             print(f"    child {cdir.name}: judge → {verdict.get('winner', '?')}")
-            with open(_HERE / "results" / "results.json", "w") as f:
+            with open(out_dir / "results.json", "w") as f:
                 json.dump({"config": args.config, "vlm": {a["name"]: a["model"] for a in arms},
                            "cells": cells}, f, indent=1)
 
     results = {"arms": [{"name": a["name"], "model": a["model"]} for a in arms], "cells": cells,
                "meta": {"mothers": mother_ids, "sample_strategy": args.sample_strategy}}
-    with open(_HERE / "results" / "results.json", "w") as f:
+    with open(out_dir / "results.json", "w") as f:
         json.dump(results, f, indent=1)
     return results
 
@@ -222,11 +228,15 @@ def main(argv=None) -> int:
     p.add_argument("--max-frames", type=int, default=2)
     p.add_argument("--sample-strategy", choices=["default", "harsh"], default="harsh")
     p.add_argument("--env-file", default=None)
+    p.add_argument("--results-file", default=None)
+    p.add_argument("--report-file", default=None)
     args = p.parse_args(argv)
-    results = run_experiment(args)
+    out_dir = Path(args.results_file).resolve().parent if args.results_file else _HERE / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    results = run_experiment(args, out_dir)
     agg = aggregate(results)
     qwen = qwen_reference_summary(_HERE.parent / "experiment1" / "results" / "results.json")
-    path = write_report(results, agg, qwen, _HERE / "results" / "report.html")
+    path = write_report(results, agg, qwen, Path(args.report_file) if args.report_file else out_dir / "report.html")
     print("\n=== aggregate ===")
     for k, v in agg["per_arm"].items():
         print(f"  {k}: dev {v['mean_det_deviation']} · resilience {v['mean_resilience']} · noise handling {v['mean_noise_handling']}")

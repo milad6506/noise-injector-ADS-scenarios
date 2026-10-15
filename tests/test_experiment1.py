@@ -57,15 +57,17 @@ def test_runner_end_to_end_offline(tmp_path, monkeypatch):
     monkeypatch.setattr(exp1, "OpenAICompatClient",
                         lambda **kw: fake_judge if "glm" in kw.get("model", "") else fake_vlm)
 
-    argv = ["--run-dir", str(run_dir), "--mothers", "1", "--per-mother", "2", "--max-frames", "1"]
+    results_file = tmp_path / "exp1res" / "results.json"
+    argv = ["--run-dir", str(run_dir), "--mothers", "1", "--per-mother", "2", "--max-frames", "1",
+            "--results-file", str(results_file), "--report-file", str(tmp_path / "exp1res" / "report.html")]
     monkeypatch.setattr(sys, "argv", ["runner.py"] + argv)
     rc = exp1.main(argv)
     assert rc == 0
-    results = json.load(open(exp1._HERE / "results" / "results.json"))
+    results = json.load(open(results_file))
     assert len(results["cells"]) == 2
     agg = exp1.aggregate(results)
     assert agg["wins"].get("agent2") == 2
-    report = exp1.write_report(results, agg, exp1._HERE / "results" / "report.html")
+    report = exp1.write_report(results, agg, tmp_path / "exp1res" / "report.html")
     content = report.read_text()
     assert "noise-blind vs noise-aware" in content or "Experiment 1" in content
     assert "OPENROUTER" not in content and "sk-or" not in content
