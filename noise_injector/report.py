@@ -55,10 +55,21 @@ h2 { font-size:17px; margin:26px 0 8px; border-bottom:1px solid var(--line); pad
 .badge.clean{color:var(--ok);border-color:var(--ok)}
 .dose { color:var(--mut); font-size:11.5px; }
 .player { margin-top:10px; }
-.viewport { background:#20242c; border:1px solid var(--line); border-radius:10px; min-height:300px; display:flex;
+.viewport { background:#20242c; border:1px solid var(--line); border-radius:10px; display:flex;
             align-items:center; justify-content:center; overflow:hidden; }
 .viewport img, .viewport canvas { max-width:100%; max-height:100%; display:none; }
 .viewport img.active, .viewport canvas.active { display:block; }
+.mosaic { display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; width:100%; padding:6px; }
+.cell { position:relative; background:#0a0c10; border-radius:4px; aspect-ratio:16/9; overflow:hidden; }
+.cell img { width:100%; height:100%; object-fit:cover; display:block; max-width:none; max-height:none; }
+.cell .camlabel { position:absolute; top:3px; left:5px; font-size:9px; color:rgba(255,255,255,0.75);
+                  background:rgba(10,12,16,0.55); padding:0 5px; border-radius:3px; z-index:2; }
+.cell.ego { display:flex; align-items:center; justify-content:center; background:transparent; aspect-ratio:auto; min-height:34px; }
+.egolabel { font-size:10.5px; color:var(--acc); font-weight:700; letter-spacing:.1em; }
+.cell.spacer { background:transparent; aspect-ratio:auto; min-height:0; }
+.cell.nofeed img { display:none; }
+.cell.nofeed::after { content:'NO FEED'; position:absolute; inset:0; display:flex; align-items:center;
+                      justify-content:center; font-size:10px; color:#5c6570; letter-spacing:.1em; }
 .controls { display:flex; align-items:center; gap:10px; margin-top:8px; }
 .playbtn { background:var(--acc); border:none; color:#fff; border-radius:8px; width:34px; height:28px;
            font-size:13px; cursor:pointer; flex:none; }
@@ -118,12 +129,11 @@ def _frames_from_annotations(offspring_dir: Path, ann: dict) -> tuple[str, list]
         all_cams = sorted({c for fr in ann["key_frames"].values()
                            for c, rel in (fr.get("image_paths") or {}).items()
                            if rel and (offspring_dir / rel).exists()})
-        embed_cams = set(all_cams[:2]) if len(all_cams) > 3 else set(all_cams)
         for fid, fr in ann["key_frames"].items():
             cams = {}
             for cam, rel in (fr.get("image_paths") or {}).items():
-                if cam in embed_cams and rel and (offspring_dir / rel).exists():
-                    b64 = _b64_image(offspring_dir / rel)
+                if cam in all_cams and rel and (offspring_dir / rel).exists():
+                    b64 = _b64_image(offspring_dir / rel, width=260, quality=55)
                     if b64:
                         cams[cam] = b64
             if cams:
@@ -331,23 +341,46 @@ function showFrame(key, dom, i){
   vp.innerHTML = '';
   if (d.kind === 'image') {
     const fr = d.frames[i];
-    let cam = players[key] && players[key].cam && fr.cameras[players[key].cam] ? players[key].cam : Object.keys(fr.cameras)[0];
-    const img = document.createElement('img');
-    img.src = fr.cameras[cam]; img.className = 'active';
-    vp.appendChild(img);
-    if (Object.keys(fr.cameras).length > 1) {
-      const chips = document.createElement('div'); chips.className = 'cams';
-      for (const c of Object.keys(fr.cameras)) {
-        const b = document.createElement('button');
-        b.className = 'camchip' + (c === cam ? ' active' : '');
-        b.textContent = c.replace('CAM_', '');
-        b.onclick = () => { players[key] = {cam: c}; showFrame(key, dom, i); };
-        chips.appendChild(b);
+    let slots = players[key] && players[key].slots;
+    if (!slots) {
+      vp.innerHTML = '';
+      const mosaic = document.createElement('div'); mosaic.className = 'mosaic';
+      const layout = [
+        ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT'],
+        [null, 'EGO', null],
+        ['CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
+      ];
+      slots = {};
+      for (const row of layout) {
+        for (const cam of row) {
+          const cell = document.createElement('div');
+          if (cam === 'EGO') {
+            cell.className = 'cell ego';
+            cell.innerHTML = '<span class="egolabel">EGO ▲</span>';
+          } else if (cam) {
+            cell.className = 'cell';
+            cell.innerHTML = '<span class="camlabel">' + cam.replace('CAM_', '') + '</span><img alt="">';
+            slots[cam] = cell.querySelector('img');
+          } else {
+            cell.className = 'cell spacer';
+          }
+          mosaic.appendChild(cell);
+        }
       }
-      vp.style.position = 'relative';
-      chips.style.cssText = 'position:absolute;top:6px;left:6px;';
-      vp.appendChild(chips);
+      vp.appendChild(mosaic);
+      players[key] = Object.assign(players[key] || {}, {slots: slots, mosaic: mosaic});
     }
+    for (const cam in slots) {
+      const img = slots[cam];
+      if (fr.cameras[cam]) {
+        img.src = fr.cameras[cam];
+        img.parentElement.classList.remove('nofeed');
+      } else {
+        img.removeAttribute('src');
+        img.parentElement.classList.add('nofeed');
+      }
+    }
+    players[key] = Object.assign(players[key] || {}, {frame: i});
   } else {
     const fr = d.frames[i];
     const canvas = document.createElement('canvas');
