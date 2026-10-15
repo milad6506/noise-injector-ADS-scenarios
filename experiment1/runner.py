@@ -292,7 +292,27 @@ def aggregate(results: dict) -> dict:
             "mean_noise_handling": round(sum(nh) / n, 2),
         }
     wins = Counter(c["judge"].get("winner", "tie") for c in results["cells"])
-    return {"per_arm": per_arm, "wins": dict(wins)}
+
+    per_mode = {}
+    modes = {}
+    for cell in results["cells"]:
+        modes.setdefault(cell["noise_mode"], []).append(cell)
+    for mode, cells in modes.items():
+        entry = {"n": len(cells), "wins": dict(Counter(c["judge"].get("winner", "tie") for c in cells))}
+        for a in results["arms"]:
+            jk = f"agent{1 if a['key'] == 'A' else 2}"
+            entry[f"res_{a['key']}"] = round(sum(c["judge"].get(jk, {}).get("resilience", 0) for c in cells) / len(cells), 2)
+            entry[f"det_{a['key']}"] = round(sum(c["arms"][a["key"]]["det_dev"]["deviation"] for c in cells) / len(cells), 2)
+        per_mode[mode] = entry
+
+    worst = max(results["cells"],
+                key=lambda c: c["arms"]["A"]["det_dev"]["deviation"] + c["arms"]["B"]["det_dev"]["deviation"],
+                default=None)
+    best = max(results["cells"],
+               key=lambda c: min(c["judge"].get("agent1", {}).get("resilience", 0),
+                                 c["judge"].get("agent2", {}).get("resilience", 0)),
+               default=None)
+    return {"per_arm": per_arm, "wins": dict(wins), "per_mode": per_mode, "worst_cell": worst, "best_cell": best}
 
 
 def write_report(results: dict, agg: dict, path: Path) -> Path:
@@ -315,15 +335,43 @@ def write_report(results: dict, agg: dict, path: Path) -> Path:
         f"<td>{v['mean_det_deviation']}</td><td>{v['mean_resilience']}</td>"
         f"<td>{v['mean_noise_handling']}</td></tr>"
         for v in agg["per_arm"].values())
+
+    findings = []
+    a, b = agg["per_arm"]["A"], agg["per_arm"]["B"]
+    wins = agg["wins"]
+    blind_key = max(wins, key=wins.get) if wins else "tie"
+    findings.append(f"<li><b>Arm comparison:</b> deviation {a['mean_det_deviation']} (blind) vs "
+                    f"{b['mean_det_deviation']} (aware) · resilience {a['mean_resilience']} vs "
+                    f"{b['mean_resilience']} · judge wins {html.escape(json.dumps(wins))} — "
+                    f"{'noise awareness pays off' if b['mean_resilience'] > a['mean_resilience'] and blind_key == 'B' else 'no clear advantage of awareness in this sample'}</li>")
+    if agg.get("worst_cell"):
+        wc = agg["worst_cell"]
+        worst_mode = wc["noise_mode"]
+        findings.append(f"<li><b>Hardest noise mode:</b> <code>{html.escape(worst_mode)}</code> — combined deviation "
+                        f"{wc['arms']['A']['det_dev']['deviation']} (blind) / {wc['arms']['B']['det_dev']['deviation']} (aware)</li>")
+    mode_rows = ""
+    for mode, entry in sorted(agg["per_mode"].items()):
+        findings.append(f"<li><b>{html.escape(mode)}</b>: resilience blind {entry['res_A']} vs aware {entry['res_B']}"
+                        f" · deterministic deviation {entry['det_A']} vs {entry['det_B']} · wins {html.escape(json.dumps(entry['wins']))}</li>")
+        mode_rows += (f"<tr><td>{html.escape(mode)}</td><td>{entry['n']}</td>"
+                      f"<td>{entry['det_A']} vs {entry['det_B']}</td>"
+                      f"<td>{entry['res_A']} vs {entry['res_B']}</td>"
+                      f"<td>{html.escape(json.dumps(entry['wins']))}</td></tr>")
+    key_findings = f"<div class='sec'><ul>{''.join(findings)}</ul></div>"
+
     content = f"""<!doctype html><html><head><meta charset="utf-8">
 <title>Experiment 1 — noise-blind vs noise-aware VLM</title><style>{_CSS}
 td, th {{ font-size: 12.5px; }}</style></head><body><div class="wrap">
 <h1>Experiment 1 — resilience of a driving VLM to injected noise</h1>
 <div class="sub">arms: Qwen3-VL-8B blind vs noise-aware (identical otherwise) · judge: {html.escape(results['judge']['model'])} ·
 data: noise-injector run ({len(results['cells'])} cells)</div>
+<h2>Key findings (auto-generated)</h2>
+{key_findings}
 <h2>Aggregate</h2>
 <div class="sec"><table><tr><th>Arm</th><th>Mean deviation (det.)</th><th>Mean resilience (judge)</th><th>Mean noise handling</th></tr>{arm_rows}</table>
 <div class="sub">judge winners: {html.escape(json.dumps(agg['wins']))}</div></div>
+<h2>Per noise mode</h2>
+<div class="sec"><table><tr><th>Noise mode</th><th>n</th><th>Det. deviation (blind vs aware)</th><th>Resilience (blind vs aware)</th><th>Wins</th></tr>{mode_rows}</table></div>
 <h2>Per child</h2>
 <div class="sec"><table><tr><th>Mother</th><th>Noise mode</th><th>A1: dev/res/nh</th><th>A2: dev/res/nh</th><th>Winner</th><th>Notes</th></tr>{rows}</table></div>
 <div class="note">Protocol: both arms see the mother sequence as reference; deviation = drift of a child response from

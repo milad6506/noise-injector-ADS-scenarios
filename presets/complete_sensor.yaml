@@ -1,0 +1,36 @@
+# Complete sensor-noise batch (Layers A + B) — model harness/prompt and QA-layer ops excluded.
+# Critical safety families sweep severities 1-5; secondary families sweep 1-3 (importance-weighted dose coverage).
+
+name: complete_sensor
+entries:
+  - {family: fog,               severities: [1, 2, 3, 4, 5]}
+  - {family: rain,              severities: [1, 2, 3, 4, 5]}
+  - {family: snow,              severities: [1, 2, 3, 4, 5]}
+  - {family: low_light,         severities: [1, 2, 3, 4, 5]}
+  - {family: glare,             severities: [1, 2, 3, 4, 5]}
+  - {family: motion_blur,       severities: [1, 2, 3, 4, 5]}
+  - {family: water_splash,      severities: [1, 2, 3, 4, 5]}
+  - {family: lens_dirt,         severities: [1, 2, 3, 4, 5]}
+  - {family: overexposure,      severities: [1, 2, 3]}
+  - {family: defocus,           severities: [1, 2, 3]}
+  - {family: bloom,             severities: [1, 2, 3]}
+  - {family: awgn,              severities: [1, 2, 3]}
+  - {family: salt_pepper,       severities: [1, 2, 3]}
+  - {family: dead_pixels,       severities: [1, 2, 3]}
+  - {family: banding,           severities: [1, 2, 3]}
+  - {family: chromatic_aberration, severities: [1, 2, 3]}
+  - {family: lens_droplets,     severities: [1, 2, 3]}
+  - {family: rolling_shutter,   severities: [1, 2, 3]}
+  - {family: color_cast,        severities: [1, 2, 3]}
+  - {family: quantization,      severities: [1, 2, 3]}
+  - {family: jpeg,              severities: [1, 2, 3]}
+  - {family: frame_freeze,      severities: [1, 2, 3], pattern: intermittent}
+  - {family: camera_desync,     severities: [1], pattern: transient}
+  - {family: camera_dropout,    severities: [2], pattern: flaky_camera, per_camera: true}
+  - {family: missed_detections, severities: [2, 4]}
+  - {family: phantom_objects,   severities: [3]}
+  - {family: bbox_jitter,       severities: [2, 4]}
+  - {family: class_confusion,   severities: [3]}
+  - {family: status_flip,       severities: [3]}
+  - {family: max_det_truncation, severities: [2]}
+  - {family: llm_description_drift, severities: [3]}

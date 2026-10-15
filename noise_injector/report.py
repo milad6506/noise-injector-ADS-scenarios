@@ -193,8 +193,14 @@ def collect(offspring_root: Path) -> list[dict]:
     return found
 
 
-def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None = None, max_frames_per: int = 60) -> str:
+def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None = None,
+                 max_frames_per: int = 60, family_filter: str | None = None,
+                 title: str | None = None) -> str:
     runs = collect(Path(offspring_root))
+    if family_filter:
+        runs = [r for r in runs
+                if (r["manifest"]["injected_events"][0]["family"]
+                    if r["manifest"]["injected_events"] else "clean") == family_filter]
     if not runs:
         raise SystemExit(f"no manifests found under {offspring_root}")
 
@@ -290,7 +296,7 @@ def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None
              f"<div class='stat'><b>{n_children}</b>perturbed children</div></div>")
 
     body = f"""<div class="wrap">
-<h1>noise-injector — generated test scenarios</h1>
+<h1>{html.escape(title or 'noise-injector — generated test scenarios')}</h1>
 <div class="sub">v{__version__} · click a parent scenario to expand its generated children · every scenario is playable (scrub first → last frame)</div>
 {stats}
 {''.join(tree_items)}

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import cv2
@@ -159,6 +160,83 @@ def _label_tile(img: np.ndarray, label: str) -> np.ndarray:
 def cmd_report(args) -> int:
     path = write_report(args.offspring, args.out, args.previews)
     print(f"report -> {path}")
+    return 0
+
+
+def cmd_batch(args) -> int:
+    import html as _html
+    from . import __version__
+    from .llm import make_backend
+    from .presets import expand_preset, load_preset
+    from .report import build_report, collect
+
+    out_root = Path(args.out)
+    data_dir = Path(args.data_root).expanduser() if args.data_root else out_root / "data" / args.dataset
+    adapter_type = {"drivelm": "nuscenes", "carla": "carla", "waymo": "waymo"}.get(args.dataset, args.dataset)
+    adapter = get_adapter(adapter_type, data_dir, max_frames=args.max_frames)
+    ids = select_scenarios(adapter, str(args.samples))
+    scenarios = []
+    for sid in ids:
+        sc = adapter.get_scenario(sid)
+        scenarios.append({"id": sid, "description": sc.description, "cameras": sorted(sc.frames[0].cameras),
+                          "scenario": sc})
+    preset = load_preset(args.preset)
+    work = expand_preset(preset, scenarios)
+    print(f"[batch] {args.samples} parents × preset '{preset.get('name', '?')}' → {len(work)} children")
+
+    backend = cache = None
+    if any(w["family"].startswith("llm_") for w in work):
+        backend, cache = make_backend(args.llm_base_url, args.llm_model, args.llm_api_key_env,
+                                      cache_path=(out_root / ".llm_cache.json") if not args.no_llm_cache else None)
+        print(f"LLM backend: {args.llm_model} @ {args.llm_base_url}")
+
+    clean_done = set()
+    started = time.time()
+    for i, w in enumerate(work):
+        sid = w["sid"]
+        if sid not in clean_done:
+            sc = w["sc"]["scenario"]
+            clean_dest = out_root / "offspring" / adapter.name / sid / "clean"
+            if not (clean_dest / "annotations.json").exists():
+                render_scenario(sc, {"name": "clean", "ops": []}, clean_dest,
+                                derive_seed(args.seed, sid, "clean"), root=str(adapter.root))
+            clean_done.add(sid)
+        sc = w["sc"]["scenario"]
+        recipe = {"name": w["child_name"], "ops": [{"family": w["family"], "severity": w["severity"],
+                                                    "pattern": w["pattern"],
+                                                    "params_override": {}, "force_camera": w["force_camera"]}]}
+        dest = out_root / "offspring" / adapter.name / sid / w["child_name"]
+        render_scenario(sc, recipe, dest, derive_seed(args.seed, sid, w["child_name"]),
+                        root=str(adapter.root), backend=backend, cache=cache)
+        if (i + 1) % 25 == 0 or i + 1 == len(work):
+            dt = time.time() - started
+            print(f"    {i + 1}/{len(work)} rendered ({dt:.0f}s, {dt / (i + 1):.2f} s/child)")
+
+    off_root = out_root / "offspring"
+    runs = collect(off_root)
+    fams = {}
+    for r in runs:
+        m = r["manifest"]
+        f = m["injected_events"][0]["family"] if m["injected_events"] else "clean"
+        fams.setdefault(f, []).append(r)
+    index_rows = ""
+    for f in sorted(fams):
+        fname = "report.html" if f == "clean" else f"report_{f}.html"
+        build_report(off_root, out_root / fname, family_filter=f,
+                     title=f"noise-injector — {f} ({len(fams[f])} scenarios)")
+        index_rows += f"<li><a href='{fname}'>{_html.escape(f)}</a> — {len(fams[f])} scenarios</li>"
+        print(f"    report: {fname} ({len(fams[f])} scenarios)")
+    n_pert = sum(len(v) for f, v in fams.items() if f != "clean")
+    css = build_report.__globals__.get("_CSS", "")
+    index = f"""<!doctype html><html><head><meta charset="utf-8"><title>noise-injector batch</title>
+<style>{css}</style></head><body><div class="wrap">
+<h1>noise-injector — batch test scenarios</h1>
+<div class="sub">v{__version__} · {len(ids)} parent scenarios · {n_pert} perturbed children · preset '{_html.escape(preset.get('name', '?'))}' ·
+each family has its own interactive report below</div>
+<ul>{index_rows}</ul>
+<footer>self-contained reports · no paths, no credentials</footer></div></body></html>"""
+    (out_root / "index.html").write_text(index)
+    print(f"done: {n_pert} perturbed children + {len(fams.get('clean', []))} clean baselines -> {out_root / 'index.html'} ({time.time() - started:.0f}s)")
     return 0
 
 
@@ -364,6 +442,20 @@ def build_parser() -> argparse.ArgumentParser:
     po.add_argument("--experiment", required=True, help="experiment YAML (engine + dataset + targets + rounds)")
     po.add_argument("--out", required=True, help="run output directory (resumable)")
     po.set_defaults(fn=cmd_run)
+
+    pb = sub.add_parser("batch", help="generate a full batch from a preset (multi-family, split reports)")
+    pb.add_argument("--preset", required=True, help="preset YAML (entries: family/severities/pattern/per_camera)")
+    pb.add_argument("--dataset", required=True, help="waymo | drivelm | carla")
+    pb.add_argument("--samples", type=int, default=10, help="parent scenarios")
+    pb.add_argument("--data-root", default=None, help="existing local dataset root (skips fetching)")
+    pb.add_argument("--max-frames", type=int, default=60)
+    pb.add_argument("--llm-base-url", default="http://127.0.0.1:11434/v1")
+    pb.add_argument("--llm-model", default="llama3.2:3b")
+    pb.add_argument("--llm-api-key-env", default="NOISE_INJECTOR_API_KEY")
+    pb.add_argument("--no-llm-cache", action="store_true")
+    pb.add_argument("--seed", type=int, default=42)
+    pb.add_argument("--out", required=True)
+    pb.set_defaults(fn=cmd_batch)
 
     pf = sub.add_parser("fetch", help="download scenario data (waymo|drivelm|carla|lyft) or any package/harness by link")
     pf.add_argument("--dataset", default=None, help="waymo | drivelm | carla | lyft")
