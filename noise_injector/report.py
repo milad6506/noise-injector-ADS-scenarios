@@ -136,11 +136,13 @@ def _frames_from_annotations(offspring_dir: Path, ann: dict) -> tuple[str, list]
     return "boxes", frames, {k: [round(v[0] + 20), round(v[1] + 20)] for k, v in dims.items()}
 
 
-def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge: str, desc: str, veil: float = 0.0) -> dict:
+def _scenario_payload(scenario_key: str, offspring_dir: Path, label: str, badge: str, desc: str, veil: float = 0.0, weather: dict | None = None) -> dict:
     with open(offspring_dir / "annotations.json") as f:
         ann = json.load(f)
     kind, frames, extra = _frames_from_annotations(offspring_dir, ann)
     payload = {"label": label, "badge": badge, "desc": desc, "kind": kind, "frames": frames, "veil": veil}
+    if weather:
+        payload["weather"] = weather
     if kind == "boxes":
         payload["dims"] = extra
     else:
@@ -199,12 +201,17 @@ def build_report(offspring_root: Path, out_path: Path, previews_dir: Path | None
                 n_children += 1
                 skey = f"{adapter}:{sid}:{k['key']}"
                 veil = 0.0
+                weather = {}
                 for ev in k["m"]["injected_events"]:
                     if ev.get("family") == "fog":
                         veil = float((ev.get("params") or {}).get("amount", 0.0))
+                    if ev.get("family") == "rain":
+                        weather = {"rain": int((ev.get("params") or {}).get("n_streaks", 0)),
+                                   "darken": float((ev.get("params") or {}).get("darken", 0.0))}
                 scenario_data[skey] = _scenario_payload(skey, k["dir"], html.escape(k["key"]),
                                                         str(k["m"]["injected_events"][0].get("layer", "")),
-                                                        _child_description(k["m"]), veil=veil)
+                                                        _child_description(k["m"]), veil=veil,
+                                                        weather=weather or None)
                 child_items.append(f"""
     <div class="child-box">
       <div class="child-head"><span class="badge {scenario_data[skey]['badge']}">{scenario_data[skey]['badge']}</span>
@@ -324,6 +331,20 @@ function showFrame(key, dom, i){
     const road = ctx.createLinearGradient(0, horizon, 0, canvas.height);
     road.addColorStop(0, '#9aa3ad'); road.addColorStop(1, '#6f7883');
     ctx.fillStyle = road; ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+    if (d.weather && d.weather.rain) {
+      const n = Math.min(120, Math.round(d.weather.rain / 4));
+      ctx.strokeStyle = 'rgba(190,205,225,0.5)'; ctx.lineWidth = 1;
+      for (let s = 0; s < n; s++) {
+        const h = (Math.sin(s * 12.9898 + fr.id.length * 7.7) * 43758.5453);
+        const fx = (h - Math.floor(h));
+        const h2 = (Math.sin(s * 78.233 + fr.id.length * 3.3) * 12345.6789);
+        const fy = (h2 - Math.floor(h2));
+        const x = fx * canvas.width, y = fy * canvas.height;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 14); ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(10,14,26,' + d.weather.darken + ')';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.setLineDash([14, 12]); ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(canvas.width / 2 - 30, canvas.height); ctx.lineTo(canvas.width / 2 + 4, horizon); ctx.stroke();
     ctx.setLineDash([]);
